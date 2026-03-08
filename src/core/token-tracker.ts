@@ -78,70 +78,189 @@ export class TokenTracker {
   }
 
   /**
-   * Get Claude Code token statistics
+   * Get Claude Code token statistics (from tasks and projects)
    */
   private async getClaudeTokenStats(agent: Agent): Promise<{
     today: TokenUsage;
     thisWeek: TokenUsage;
     thisMonth: TokenUsage;
   }> {
-    // Claude Code logs are typically in ~/.claude/logs/
-    const logsDir = expandHome('~/.claude/logs');
-
     try {
-      // Try to read recent log files
-      const files = await fs.readdir(logsDir);
-      const logFiles = files.filter(f => f.endsWith('.log') || f.endsWith('.jsonl'));
+      // Claude Code stores task data in ~/.claude/tasks/ and project transcripts
+      const tasksDir = expandHome('~/.claude/tasks');
+      const projectsDir = expandHome('~/.claude/projects');
 
-      let totalInput = 0;
-      let totalOutput = 0;
+      const now = Date.now();
+      const oneDayAgo = now - 24 * 60 * 60 * 1000;
+      const oneWeekAgo = now - 7 * 24 * 60 * 60 * 1000;
+      const oneMonthAgo = now - 30 * 24 * 60 * 60 * 1000;
 
-      // Parse log files for token usage
-      for (const file of logFiles.slice(-10)) { // Last 10 log files
-        const filePath = path.join(logsDir, file);
-        try {
-          const content = await fs.readFile(filePath, 'utf-8');
-          const lines = content.split('\n').filter(l => l.trim());
+      let dailyInput = 0;
+      let dailyOutput = 0;
+      let weeklyInput = 0;
+      let weeklyOutput = 0;
+      let monthlyInput = 0;
+      let monthlyOutput = 0;
 
-          for (const line of lines) {
-            try {
-              const log = JSON.parse(line);
-              if (log.usage || log.token_usage) {
-                const usage = log.usage || log.token_usage;
-                totalInput += usage.input_tokens || 0;
-                totalOutput += usage.output_tokens || 0;
+      // Count conversation transcripts in projects
+      try {
+        const projectDirs = await fs.readdir(projectsDir);
+
+        for (const projectDir of projectDirs) {
+          const transcriptPath = path.join(projectsDir, projectDir);
+          const transcriptFiles = await fs.readdir(transcriptPath).catch(() => []);
+
+          for (const file of transcriptFiles) {
+            if (file.endsWith('.jsonl')) {
+              const filePath = path.join(transcriptPath, file);
+              const stats = await fs.stat(filePath);
+              const fileTime = stats.mtimeMs;
+
+              // Read and count messages
+              try {
+                const content = await fs.readFile(filePath, 'utf-8');
+                const lines = content.split('\n').filter(l => l.trim());
+
+                // Estimate: each message exchange ~1000 tokens (500 in, 500 out)
+                const messageCount = lines.length;
+                const estimatedInput = messageCount * 500;
+                const estimatedOutput = messageCount * 500;
+
+                if (fileTime > oneDayAgo) {
+                  dailyInput += estimatedInput;
+                  dailyOutput += estimatedOutput;
+                }
+                if (fileTime > oneWeekAgo) {
+                  weeklyInput += estimatedInput;
+                  weeklyOutput += estimatedOutput;
+                }
+                if (fileTime > oneMonthAgo) {
+                  monthlyInput += estimatedInput;
+                  monthlyOutput += estimatedOutput;
+                }
+              } catch {
+                // Skip file on error
               }
-            } catch {
-              // Not JSON or doesn't have token info
             }
           }
-        } catch {
-          // File read error
         }
+      } catch (error) {
+        // Projects directory doesn't exist or can't be read
       }
 
-      const today = this.createTokenUsage(agent, totalInput, totalOutput, 'daily');
-      const thisWeek = this.createTokenUsage(agent, totalInput, totalOutput, 'weekly');
-      const thisMonth = this.createTokenUsage(agent, totalInput, totalOutput, 'monthly');
+      // Also check tasks directory for task-based token usage
+      try {
+        const taskDirs = await fs.readdir(tasksDir);
+
+        for (const taskDir of taskDirs) {
+          const taskPath = path.join(tasksDir, taskDir);
+          const taskStat = await fs.stat(taskPath);
+
+          if (taskStat.isDirectory()) {
+            const taskTime = taskStat.mtimeMs;
+
+            // Each task represents ~2000-5000 tokens of conversation
+            const avgTaskTokens = 3000;
+            const taskInput = avgTaskTokens * 0.4; // 40% input
+            const taskOutput = avgTaskTokens * 0.6; // 60% output
+
+            if (taskTime > oneDayAgo) {
+              dailyInput += taskInput;
+              dailyOutput += taskOutput;
+            }
+            if (taskTime > oneWeekAgo) {
+              weeklyInput += taskInput;
+              weeklyOutput += taskOutput;
+            }
+            if (taskTime > oneMonthAgo) {
+              monthlyInput += taskInput;
+              monthlyOutput += taskOutput;
+            }
+          }
+        }
+      } catch {
+        // Tasks directory doesn't exist or can't be read
+      }
+
+      const today = this.createTokenUsage(agent, Math.round(dailyInput), Math.round(dailyOutput), 'daily');
+      const thisWeek = this.createTokenUsage(agent, Math.round(weeklyInput), Math.round(weeklyOutput), 'weekly');
+      const thisMonth = this.createTokenUsage(agent, Math.round(monthlyInput), Math.round(monthlyOutput), 'monthly');
 
       return { today, thisWeek, thisMonth };
     } catch (error) {
-      // Logs directory doesn't exist or can't be read
+      // Error reading Claude directories
       return this.getEmptyTokenStats(agent);
     }
   }
 
   /**
-   * Get Cursor token statistics
+   * Get Cursor token statistics (from SQLite database)
    */
   private async getCursorTokenStats(agent: Agent): Promise<{
     today: TokenUsage;
     thisWeek: TokenUsage;
     thisMonth: TokenUsage;
   }> {
-    // Cursor doesn't publicly expose token usage logs
-    // Return estimated based on activity if possible
-    return this.getEmptyTokenStats(agent);
+    try {
+      const { execSync } = require('child_process');
+      const dbPath = expandHome('~/.cursor/ai-tracking/ai-code-tracking.db');
+
+      // Check if database exists
+      try {
+        await fs.access(dbPath);
+      } catch {
+        return this.getEmptyTokenStats(agent);
+      }
+
+      const now = Date.now();
+      const oneDayAgo = now - 24 * 60 * 60 * 1000;
+      const oneWeekAgo = now - 7 * 24 * 60 * 60 * 1000;
+      const oneMonthAgo = now - 30 * 24 * 60 * 60 * 1000;
+
+      // Query AI code generation records
+      const dailyQuery = `SELECT COUNT(*) as count FROM ai_code_hashes WHERE timestamp > ${oneDayAgo}`;
+      const weeklyQuery = `SELECT COUNT(*) as count FROM ai_code_hashes WHERE timestamp > ${oneWeekAgo}`;
+      const monthlyQuery = `SELECT COUNT(*) as count FROM ai_code_hashes WHERE timestamp > ${oneMonthAgo}`;
+
+      let dailyCount = 0;
+      let weeklyCount = 0;
+      let monthlyCount = 0;
+
+      try {
+        const dailyResult = execSync(`sqlite3 "${dbPath}" "${dailyQuery}"`, { encoding: 'utf-8' });
+        dailyCount = parseInt(dailyResult.trim(), 10) || 0;
+
+        const weeklyResult = execSync(`sqlite3 "${dbPath}" "${weeklyQuery}"`, { encoding: 'utf-8' });
+        weeklyCount = parseInt(weeklyResult.trim(), 10) || 0;
+
+        const monthlyResult = execSync(`sqlite3 "${dbPath}" "${monthlyQuery}"`, { encoding: 'utf-8' });
+        monthlyCount = parseInt(monthlyResult.trim(), 10) || 0;
+      } catch (error) {
+        // SQLite query failed, return empty stats
+        return this.getEmptyTokenStats(agent);
+      }
+
+      // Estimate tokens: ~500 tokens per code generation (conservative estimate)
+      // Average code generation: 200 input (prompt) + 300 output (code)
+      const avgInputPerGen = 200;
+      const avgOutputPerGen = 300;
+
+      const dailyInput = dailyCount * avgInputPerGen;
+      const dailyOutput = dailyCount * avgOutputPerGen;
+      const weeklyInput = weeklyCount * avgInputPerGen;
+      const weeklyOutput = weeklyCount * avgOutputPerGen;
+      const monthlyInput = monthlyCount * avgInputPerGen;
+      const monthlyOutput = monthlyCount * avgOutputPerGen;
+
+      const today = this.createTokenUsage(agent, dailyInput, dailyOutput, 'daily');
+      const thisWeek = this.createTokenUsage(agent, weeklyInput, weeklyOutput, 'weekly');
+      const thisMonth = this.createTokenUsage(agent, monthlyInput, monthlyOutput, 'monthly');
+
+      return { today, thisWeek, thisMonth };
+    } catch (error) {
+      console.error('Failed to query Cursor database:', error);
+      return this.getEmptyTokenStats(agent);
+    }
   }
 
   /**
