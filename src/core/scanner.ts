@@ -27,19 +27,18 @@ export class SecurityScanner {
   }
 
   /**
-   * Scan all agents
+   * Scan all agents (in parallel for better performance)
    */
   async scanAll(): Promise<SecurityScanResult[]> {
-    const results: SecurityScanResult[] = [];
+    // Parallel scanning for improved performance
+    const scanPromises = Array.from(this.detectors.values()).map(detector =>
+      this.scanAgent(detector)
+    );
 
-    for (const detector of this.detectors.values()) {
-      const result = await this.scanAgent(detector);
-      if (result) {
-        results.push(result);
-      }
-    }
+    const results = await Promise.all(scanPromises);
 
-    return results;
+    // Filter out null results (agents not detected)
+    return results.filter((result): result is SecurityScanResult => result !== null);
   }
 
   /**

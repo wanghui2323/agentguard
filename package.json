@@ -1,6 +1,6 @@
 {
   "name": "agentguard",
-  "version": "0.1.0",
+  "version": "0.2.0",
   "description": "The security control center for local AI agents - monitor, protect, and manage all your AI assistants",
   "keywords": [
     "ai",
@@ -29,7 +29,8 @@
     "README.md",
     "README_EN.md",
     "QUICKSTART.md",
-    "CONTRIBUTING.md"
+    "CONTRIBUTING.md",
+    "CHANGELOG.md"
   ],
   "engines": {
     "node": ">=18.0.0"
@@ -40,8 +41,6 @@
   "scripts": {
     "dev": "tsx watch src/cli/index.ts",
     "build": "tsc",
-    "server": "tsx src/server/index.ts",
-    "web": "npm run server",
     "test": "jest",
     "lint": "eslint . --ext .ts",
     "format": "prettier --write \"src/**/*.ts\"",

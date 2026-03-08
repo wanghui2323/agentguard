@@ -146,6 +146,21 @@ export class AutoFixer {
         }
         break;
 
+      // Claude Code fixes
+      case 'claude-config-permissions':
+        const claudeConfigPath = detector.getConfigPath();
+        if (typeof claudeConfigPath === 'string') {
+          await setFilePermissions(expandHome(claudeConfigPath), '600');
+        }
+        break;
+
+      // Cursor IDE fixes
+      case 'cursor-unsafe-trusted-folders':
+        // This requires reading and modifying the trust file
+        // For now, we'll mark it as manual fix needed
+        throw new Error('This fix requires manual user confirmation. Please use Cursor IDE settings to untrust unsafe folders.');
+        break;
+
       default:
         throw new Error(`Unknown issue type: ${issue.id}`);
     }

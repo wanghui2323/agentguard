@@ -4,6 +4,7 @@
  */
 import { Command } from 'commander';
 import chalk from 'chalk';
+import ora, { Ora } from 'ora';
 import { SecurityScanner } from '../core/scanner';
 import { AutoFixer } from '../core/fixer';
 import type { SecurityScanResult } from '../types';
@@ -13,7 +14,7 @@ const program = new Command();
 program
   .name('agentguard')
   .description('Security control center for local AI agents')
-  .version('0.1.0');
+  .version('0.2.0');
 
 /**
  * Scan command
@@ -23,17 +24,62 @@ program
   .description('Scan all AI agents for security issues')
   .option('-a, --agent <name>', 'Scan specific agent')
   .option('--json', 'Output in JSON format')
+  .option('-v, --verbose', 'Show detailed scanning process')
   .action(async (options) => {
     try {
       const scanner = new SecurityScanner();
-      const results = await scanner.scanAll();
+      let spinner: Ora | null = null;
+      let results: SecurityScanResult[];
 
-      if (options.json) {
+      if (!options.json) {
+        const startTime = Date.now();
+
+        if (options.verbose) {
+          // Verbose mode - show detailed progress
+          console.log(chalk.bold('\n🔍 Starting AgentGuard security scan...\n'));
+
+          const detectors = scanner.getAllDetectors();
+          results = [];
+
+          for (const detector of detectors) {
+            console.log(chalk.cyan(`[${results.length + 1}/${detectors.length}]`), `Checking ${detector.name}...`);
+            const result = await scanner.scanAgent(detector);
+
+            if (result) {
+              results.push(result);
+              console.log(chalk.green('  ✓ Detected:'), `${result.agent.status} (Score: ${result.score}/100)`);
+
+              if (result.issues.length > 0) {
+                console.log(chalk.yellow('  ⚠ Issues found:'));
+                for (const issue of result.issues) {
+                  const icon = getSeverityIcon(issue.severity);
+                  console.log(`    ${icon} [${issue.severity}] ${issue.title}`);
+                }
+              } else {
+                console.log(chalk.green('  ✓ No security issues'));
+              }
+            } else {
+              console.log(chalk.dim('  ○ Not installed or not running'));
+            }
+            console.log();
+          }
+
+          const elapsed = ((Date.now() - startTime) / 1000).toFixed(2);
+          console.log(chalk.bold(`✨ Scan completed in ${elapsed}s\n`));
+        } else {
+          // Normal mode - show spinner
+          spinner = ora('Scanning AI Agents...').start();
+          results = await scanner.scanAll();
+          const elapsed = ((Date.now() - startTime) / 1000).toFixed(2);
+          spinner.succeed(`Scan completed in ${elapsed}s`);
+        }
+
+        displayScanResults(results);
+      } else {
+        // JSON mode - no spinner
+        results = await scanner.scanAll();
         console.log(JSON.stringify(results, null, 2));
-        return;
       }
-
-      displayScanResults(results);
     } catch (error) {
       console.error(chalk.red('Error:'), error);
       process.exit(1);
