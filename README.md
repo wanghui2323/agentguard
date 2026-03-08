@@ -113,29 +113,51 @@ AgentGuard 帮你**自动检测和修复**这些问题。
 
 ### 安装
 
-#### NPM（推荐）
-```bash
-npm install -g agentguard
-```
+#### ⚠️ 当前可用方式（v0.1.0）
 
-#### Homebrew（macOS）
-```bash
-brew install agentguard
-```
+项目正在开发中，暂未发布到 npm/Homebrew。请使用以下方式：
 
-#### 从源码安装
+**方式 1: 直接使用（推荐，最简单）**
 ```bash
 git clone https://github.com/wanghui2323/agentguard.git
 cd agentguard
 npm install
-npm run build
-npm link
+
+# 使用
+npx tsx src/cli/index.ts scan
+npx tsx src/cli/index.ts fix openclaw
+npx tsx src/cli/index.ts --help
+```
+
+**方式 2: 创建命令别名（方便日常使用）**
+```bash
+# 进入项目目录
+cd agentguard
+
+# 添加到 ~/.zshrc（macOS）或 ~/.bashrc（Linux）
+echo "alias agentguard='npx tsx $(pwd)/src/cli/index.ts'" >> ~/.zshrc
+source ~/.zshrc
+
+# 现在可以直接使用
+agentguard scan
+agentguard fix openclaw
+```
+
+#### 🚀 未来计划（v0.2.0+）
+
+```bash
+# v0.2.0 将支持
+npm install -g agentguard
+
+# 未来可能支持
+brew install agentguard
 ```
 
 ### 验证安装
 ```bash
 agentguard --version
-# 输出: 0.1.0
+# 或（如果使用方式2）
+npx tsx src/cli/index.ts --version
 ```
 
 ---

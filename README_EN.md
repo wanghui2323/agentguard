@@ -42,23 +42,44 @@ AgentGuard is a comprehensive security monitoring and management tool for local 
 
 ## 📦 Installation
 
-### NPM (Recommended)
-```bash
-npm install -g agentguard
-```
+### ⚠️ Current Installation (v0.1.0)
 
-### Homebrew (macOS)
-```bash
-brew install agentguard
-```
+The project is under active development and not yet published to npm/Homebrew. Please use:
 
-### From Source
+**Method 1: Direct Usage (Recommended, Easiest)**
 ```bash
-git clone https://github.com/yourusername/agentguard.git
+git clone https://github.com/wanghui2323/agentguard.git
 cd agentguard
 npm install
-npm run build
-npm link
+
+# Use it
+npx tsx src/cli/index.ts scan
+npx tsx src/cli/index.ts fix openclaw
+npx tsx src/cli/index.ts --help
+```
+
+**Method 2: Create Command Alias (Convenient for Daily Use)**
+```bash
+# Go to project directory
+cd agentguard
+
+# Add to ~/.zshrc (macOS) or ~/.bashrc (Linux)
+echo "alias agentguard='npx tsx $(pwd)/src/cli/index.ts'" >> ~/.zshrc
+source ~/.zshrc
+
+# Now you can use directly
+agentguard scan
+agentguard fix openclaw
+```
+
+### 🚀 Coming Soon (v0.2.0+)
+
+```bash
+# Will be available in v0.2.0
+npm install -g agentguard
+
+# Future support
+brew install agentguard
 ```
 
 ## 🎯 Quick Start

@@ -1,0 +1,44 @@
+# 源代码（只发布编译后的 dist）
+src/
+*.ts
+!*.d.ts
+tsconfig.json
+
+# 测试文件
+tests/
+test-runner.js
+*.test.js
+*.spec.js
+coverage/
+jest.config.js
+
+# 开发文件
+.git/
+.github/
+node_modules/
+
+# Web UI（暂不发布）
+web/
+
+# 文档草稿
+docs/
+DEMO_SCRIPT.md
+ROADMAP.md
+PUBLISH_TO_NPM.md
+INSTALL.md
+GitHub_Token_安全存储指南.md
+发布到GitHub完整指南.md
+
+# 配置文件
+.eslintrc.js
+.prettierrc
+.editorconfig
+
+# 临时文件
+*.log
+.DS_Store
+.env
+*.tgz
+
+# 备份文件
+*.backup.*

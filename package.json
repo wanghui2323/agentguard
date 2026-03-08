@@ -13,16 +13,24 @@
     "copilot",
     "safety"
   ],
-  "author": "AgentGuard Team",
+  "author": "wanghui2323 <support@agentguard.dev>",
   "license": "MIT",
   "repository": {
     "type": "git",
-    "url": "https://github.com/yourusername/agentguard.git"
+    "url": "https://github.com/wanghui2323/agentguard.git"
   },
-  "homepage": "https://github.com/yourusername/agentguard#readme",
+  "homepage": "https://github.com/wanghui2323/agentguard#readme",
   "bugs": {
-    "url": "https://github.com/yourusername/agentguard/issues"
+    "url": "https://github.com/wanghui2323/agentguard/issues"
   },
+  "files": [
+    "dist",
+    "LICENSE",
+    "README.md",
+    "README_EN.md",
+    "QUICKSTART.md",
+    "CONTRIBUTING.md"
+  ],
   "engines": {
     "node": ">=18.0.0"
   },
