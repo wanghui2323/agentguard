@@ -1,0 +1,727 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AgentGuard - AI Agent 安全控制中心</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            padding: 20px;
+        }
+
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+        }
+
+        .header {
+            text-align: center;
+            color: white;
+            margin-bottom: 40px;
+        }
+
+        .header h1 {
+            font-size: 48px;
+            margin-bottom: 10px;
+            text-shadow: 2px 2px 4px rgba(0,0,0,0.2);
+        }
+
+        .header p {
+            font-size: 18px;
+            opacity: 0.9;
+        }
+
+        .dashboard {
+            background: white;
+            border-radius: 20px;
+            padding: 40px;
+            box-shadow: 0 20px 60px rgba(0,0,0,0.3);
+        }
+
+        .actions {
+            display: flex;
+            gap: 20px;
+            margin-bottom: 40px;
+            flex-wrap: wrap;
+        }
+
+        .btn {
+            flex: 1;
+            padding: 15px 30px;
+            font-size: 16px;
+            font-weight: 600;
+            border: none;
+            border-radius: 10px;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 10px;
+            min-width: 150px;
+        }
+
+        .btn-primary {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+        }
+
+        .btn-primary:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 10px 20px rgba(102, 126, 234, 0.3);
+        }
+
+        .btn-success {
+            background: linear-gradient(135deg, #11998e 0%, #38ef7d 100%);
+            color: white;
+        }
+
+        .btn-success:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 10px 20px rgba(17, 153, 142, 0.3);
+        }
+
+        .btn-danger {
+            background: linear-gradient(135deg, #ee0979 0%, #ff6a00 100%);
+            color: white;
+        }
+
+        .btn-danger:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 10px 20px rgba(238, 9, 121, 0.3);
+        }
+
+        .btn:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+            transform: none;
+        }
+
+        .stats {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 20px;
+            margin-bottom: 40px;
+        }
+
+        .stat-card {
+            background: linear-gradient(135deg, #f5f7fa 0%, #c3cfe2 100%);
+            padding: 25px;
+            border-radius: 15px;
+            text-align: center;
+            transition: transform 0.3s ease;
+        }
+
+        .stat-card:hover {
+            transform: translateY(-5px);
+        }
+
+        .stat-card .number {
+            font-size: 48px;
+            font-weight: bold;
+            color: #667eea;
+            margin-bottom: 10px;
+        }
+
+        .stat-card .label {
+            font-size: 14px;
+            color: #666;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+        }
+
+        .agents-list {
+            margin-top: 30px;
+        }
+
+        .agent-card {
+            background: #f8f9fa;
+            border-radius: 15px;
+            padding: 25px;
+            margin-bottom: 20px;
+            transition: all 0.3s ease;
+            border-left: 5px solid transparent;
+        }
+
+        .agent-card:hover {
+            transform: translateX(5px);
+            box-shadow: 0 5px 15px rgba(0,0,0,0.1);
+        }
+
+        .agent-card.excellent { border-left-color: #38ef7d; }
+        .agent-card.good { border-left-color: #4CAF50; }
+        .agent-card.warning { border-left-color: #FFC107; }
+        .agent-card.danger { border-left-color: #ff6a00; }
+        .agent-card.critical { border-left-color: #ee0979; }
+
+        .agent-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 15px;
+        }
+
+        .agent-name {
+            font-size: 24px;
+            font-weight: bold;
+            color: #333;
+        }
+
+        .agent-score {
+            font-size: 36px;
+            font-weight: bold;
+        }
+
+        .agent-score.excellent { color: #38ef7d; }
+        .agent-score.good { color: #4CAF50; }
+        .agent-score.warning { color: #FFC107; }
+        .agent-score.danger { color: #ff6a00; }
+        .agent-score.critical { color: #ee0979; }
+
+        .agent-info {
+            display: flex;
+            gap: 20px;
+            margin-bottom: 15px;
+            font-size: 14px;
+            color: #666;
+        }
+
+        .agent-info .item {
+            display: flex;
+            align-items: center;
+            gap: 5px;
+        }
+
+        .status-badge {
+            padding: 5px 12px;
+            border-radius: 20px;
+            font-size: 12px;
+            font-weight: 600;
+        }
+
+        .status-running {
+            background: #d4edda;
+            color: #155724;
+        }
+
+        .status-stopped {
+            background: #f8d7da;
+            color: #721c24;
+        }
+
+        .issues-list {
+            margin-top: 15px;
+        }
+
+        .issue-item {
+            display: flex;
+            align-items: start;
+            gap: 10px;
+            padding: 10px;
+            background: white;
+            border-radius: 8px;
+            margin-bottom: 8px;
+        }
+
+        .issue-icon {
+            font-size: 20px;
+        }
+
+        .issue-content {
+            flex: 1;
+        }
+
+        .issue-title {
+            font-weight: 600;
+            color: #333;
+            margin-bottom: 5px;
+        }
+
+        .issue-description {
+            font-size: 13px;
+            color: #666;
+        }
+
+        .loading {
+            text-align: center;
+            padding: 60px 20px;
+        }
+
+        .spinner {
+            border: 4px solid #f3f3f3;
+            border-top: 4px solid #667eea;
+            border-radius: 50%;
+            width: 60px;
+            height: 60px;
+            animation: spin 1s linear infinite;
+            margin: 0 auto 20px;
+        }
+
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+
+        .empty-state {
+            text-align: center;
+            padding: 60px 20px;
+            color: #999;
+        }
+
+        .empty-state-icon {
+            font-size: 64px;
+            margin-bottom: 20px;
+        }
+
+        .agent-actions {
+            display: flex;
+            gap: 10px;
+            margin-top: 15px;
+        }
+
+        .btn-small {
+            padding: 8px 16px;
+            font-size: 14px;
+            border-radius: 6px;
+            border: none;
+            cursor: pointer;
+            font-weight: 600;
+            transition: all 0.3s ease;
+        }
+
+        .btn-fix {
+            background: #38ef7d;
+            color: white;
+        }
+
+        .btn-stop {
+            background: #ff6a00;
+            color: white;
+        }
+
+        .btn-restart {
+            background: #667eea;
+            color: white;
+        }
+
+        .btn-small:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 4px 8px rgba(0,0,0,0.2);
+        }
+
+        .notification {
+            position: fixed;
+            top: 20px;
+            right: 20px;
+            padding: 20px 30px;
+            border-radius: 10px;
+            color: white;
+            font-weight: 600;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.3);
+            animation: slideIn 0.3s ease;
+            z-index: 1000;
+        }
+
+        .notification.success { background: #38ef7d; }
+        .notification.error { background: #ee0979; }
+        .notification.info { background: #667eea; }
+
+        @keyframes slideIn {
+            from {
+                transform: translateX(400px);
+                opacity: 0;
+            }
+            to {
+                transform: translateX(0);
+                opacity: 1;
+            }
+        }
+
+        .progress-bar {
+            width: 100%;
+            height: 6px;
+            background: #e0e0e0;
+            border-radius: 3px;
+            overflow: hidden;
+            margin-top: 10px;
+        }
+
+        .progress-fill {
+            height: 100%;
+            background: linear-gradient(90deg, #667eea 0%, #764ba2 100%);
+            transition: width 0.3s ease;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>🛡️ AgentGuard</h1>
+            <p>AI Agent 安全控制中心</p>
+        </div>
+
+        <div class="dashboard">
+            <div class="actions">
+                <button class="btn btn-primary" onclick="scanAgents()">
+                    <span>🔍</span>
+                    <span>扫描所有 Agents</span>
+                </button>
+                <button class="btn btn-success" onclick="fixAllIssues()" id="fixAllBtn" disabled>
+                    <span>🔧</span>
+                    <span>一键修复全部</span>
+                </button>
+                <button class="btn btn-danger" onclick="exportReport()">
+                    <span>📄</span>
+                    <span>导出报告</span>
+                </button>
+            </div>
+
+            <div class="stats" id="stats" style="display: none;">
+                <div class="stat-card">
+                    <div class="number" id="totalAgents">0</div>
+                    <div class="label">检测到的 Agents</div>
+                </div>
+                <div class="stat-card">
+                    <div class="number" id="avgScore">0</div>
+                    <div class="label">平均安全评分</div>
+                </div>
+                <div class="stat-card">
+                    <div class="number" id="totalIssues">0</div>
+                    <div class="label">发现的问题</div>
+                </div>
+                <div class="stat-card">
+                    <div class="number" id="fixableIssues">0</div>
+                    <div class="label">可自动修复</div>
+                </div>
+            </div>
+
+            <div id="content">
+                <div class="empty-state">
+                    <div class="empty-state-icon">🔍</div>
+                    <h2>准备就绪</h2>
+                    <p>点击"扫描所有 Agents"开始安全检查</p>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        let currentAgents = [];
+
+        function showNotification(message, type = 'info') {
+            const notification = document.createElement('div');
+            notification.className = `notification ${type}`;
+            notification.textContent = message;
+            document.body.appendChild(notification);
+
+            setTimeout(() => {
+                notification.remove();
+            }, 3000);
+        }
+
+        function showLoading() {
+            document.getElementById('content').innerHTML = `
+                <div class="loading">
+                    <div class="spinner"></div>
+                    <h3>正在扫描 AI Agents...</h3>
+                    <p>这可能需要几秒钟</p>
+                </div>
+            `;
+        }
+
+        function getScoreLevel(score) {
+            if (score >= 90) return 'excellent';
+            if (score >= 70) return 'good';
+            if (score >= 50) return 'warning';
+            if (score >= 30) return 'danger';
+            return 'critical';
+        }
+
+        function getScoreEmoji(score) {
+            if (score >= 90) return '✅';
+            if (score >= 70) return '🟢';
+            if (score >= 50) return '🟡';
+            if (score >= 30) return '🟠';
+            return '🔴';
+        }
+
+        function getSeverityIcon(severity) {
+            const icons = {
+                critical: '🔴',
+                high: '🟠',
+                medium: '🟡',
+                low: '🟢',
+                info: 'ℹ️'
+            };
+            return icons[severity] || '⚠️';
+        }
+
+        const API_BASE = 'http://localhost:3000/api';
+
+        async function scanAgents() {
+            showLoading();
+            showNotification('开始扫描...', 'info');
+
+            try {
+                const response = await fetch(`${API_BASE}/scan`);
+                if (!response.ok) throw new Error('扫描请求失败');
+
+                const report = await response.json();
+
+                // 转换数据格式
+                currentAgents = report.agents.map((agentResult) => ({
+                    id: agentResult.agent.id,
+                    name: agentResult.agent.name,
+                    status: agentResult.agent.status,
+                    pid: agentResult.agent.pid,
+                    port: agentResult.agent.port ?
+                        `${agentResult.agent.port.host}:${agentResult.agent.port.port}` :
+                        'N/A',
+                    score: agentResult.score,
+                    issues: agentResult.issues.map(issue => ({
+                        severity: issue.severity,
+                        title: issue.title,
+                        description: issue.description,
+                        autoFixable: issue.autoFixable
+                    }))
+                }));
+
+                renderAgents();
+                updateStats();
+                showNotification('扫描完成！', 'success');
+            } catch (error) {
+                showNotification('扫描失败: ' + error.message, 'error');
+                document.getElementById('content').innerHTML = `
+                    <div class="empty-state">
+                        <div class="empty-state-icon">❌</div>
+                        <h2>扫描失败</h2>
+                        <p>${error.message}</p>
+                        <p style="margin-top: 10px; font-size: 14px;">请确保已启动 AgentGuard 服务器</p>
+                        <code style="background: #f5f5f5; padding: 5px 10px; border-radius: 5px; display: inline-block; margin-top: 10px;">npm run server</code>
+                    </div>
+                `;
+            }
+        }
+
+        function renderAgents() {
+            const content = document.getElementById('content');
+
+            if (currentAgents.length === 0) {
+                content.innerHTML = `
+                    <div class="empty-state">
+                        <div class="empty-state-icon">✅</div>
+                        <h2>未检测到 AI Agents</h2>
+                        <p>请确保 AI Agents 正在运行</p>
+                    </div>
+                `;
+                return;
+            }
+
+            const agentsHtml = currentAgents.map(agent => {
+                const level = getScoreLevel(agent.score);
+                const emoji = getScoreEmoji(agent.score);
+                const criticalIssues = agent.issues.filter(i => i.severity === 'critical').length;
+                const fixableIssues = agent.issues.filter(i => i.autoFixable).length;
+
+                return `
+                    <div class="agent-card ${level}">
+                        <div class="agent-header">
+                            <div>
+                                <div class="agent-name">${agent.name}</div>
+                            </div>
+                            <div class="agent-score ${level}">
+                                ${agent.score}/100 ${emoji}
+                            </div>
+                        </div>
+
+                        <div class="agent-info">
+                            <div class="item">
+                                <span class="status-badge ${agent.status === 'running' ? 'status-running' : 'status-stopped'}">
+                                    ${agent.status === 'running' ? '● 运行中' : '○ 已停止'}
+                                </span>
+                            </div>
+                            <div class="item">
+                                <span>📡 ${agent.port}</span>
+                            </div>
+                            <div class="item">
+                                <span>🔍 PID: ${agent.pid}</span>
+                            </div>
+                        </div>
+
+                        <div class="agent-info">
+                            <div class="item">
+                                <span>发现 <strong>${agent.issues.length}</strong> 个问题</span>
+                            </div>
+                            ${criticalIssues > 0 ? `
+                                <div class="item">
+                                    <span>🔴 <strong>${criticalIssues}</strong> 严重</span>
+                                </div>
+                            ` : ''}
+                            ${fixableIssues > 0 ? `
+                                <div class="item">
+                                    <span>🔧 <strong>${fixableIssues}</strong> 可修复</span>
+                                </div>
+                            ` : ''}
+                        </div>
+
+                        <div class="issues-list">
+                            ${agent.issues.map(issue => `
+                                <div class="issue-item">
+                                    <span class="issue-icon">${getSeverityIcon(issue.severity)}</span>
+                                    <div class="issue-content">
+                                        <div class="issue-title">
+                                            ${issue.title}
+                                            ${issue.autoFixable ? '<span style="color: #38ef7d;">✓ 可自动修复</span>' : ''}
+                                        </div>
+                                        <div class="issue-description">${issue.description}</div>
+                                    </div>
+                                </div>
+                            `).join('')}
+                        </div>
+
+                        <div class="agent-actions">
+                            <button class="btn-small btn-fix" onclick="fixAgent('${agent.id}')">
+                                🔧 修复问题
+                            </button>
+                            ${agent.status === 'running' ? `
+                                <button class="btn-small btn-stop" onclick="stopAgent('${agent.id}')">
+                                    ⏸️ 停止
+                                </button>
+                                <button class="btn-small btn-restart" onclick="restartAgent('${agent.id}')">
+                                    🔄 重启
+                                </button>
+                            ` : `
+                                <button class="btn-small btn-restart" onclick="startAgent('${agent.id}')">
+                                    ▶️ 启动
+                                </button>
+                            `}
+                        </div>
+                    </div>
+                `;
+            }).join('');
+
+            content.innerHTML = `<div class="agents-list">${agentsHtml}</div>`;
+        }
+
+        function updateStats() {
+            document.getElementById('stats').style.display = 'grid';
+
+            const totalAgents = currentAgents.length;
+            const avgScore = Math.round(
+                currentAgents.reduce((sum, agent) => sum + agent.score, 0) / totalAgents
+            );
+            const totalIssues = currentAgents.reduce(
+                (sum, agent) => sum + agent.issues.length, 0
+            );
+            const fixableIssues = currentAgents.reduce(
+                (sum, agent) => sum + agent.issues.filter(i => i.autoFixable).length, 0
+            );
+
+            document.getElementById('totalAgents').textContent = totalAgents;
+            document.getElementById('avgScore').textContent = avgScore;
+            document.getElementById('totalIssues').textContent = totalIssues;
+            document.getElementById('fixableIssues').textContent = fixableIssues;
+
+            document.getElementById('fixAllBtn').disabled = fixableIssues === 0;
+        }
+
+        async function fixAgent(agentId) {
+            showNotification(`正在修复 ${agentId}...`, 'info');
+
+            try {
+                const response = await fetch(`${API_BASE}/fix/${agentId}`, {
+                    method: 'POST'
+                });
+
+                if (!response.ok) throw new Error('修复请求失败');
+
+                const result = await response.json();
+
+                // 重新扫描以获取更新后的状态
+                await scanAgents();
+                showNotification(`修复完成！应用了 ${result.fixes.length} 个修复`, 'success');
+            } catch (error) {
+                showNotification('修复失败: ' + error.message, 'error');
+            }
+        }
+
+        async function fixAllIssues() {
+            for (const agent of currentAgents) {
+                await fixAgent(agent.id);
+            }
+        }
+
+        async function stopAgent(agentId) {
+            showNotification(`正在停止 ${agentId}...`, 'info');
+
+            try {
+                const response = await fetch(`${API_BASE}/stop/${agentId}`, {
+                    method: 'POST'
+                });
+
+                if (!response.ok) throw new Error('停止请求失败');
+
+                await scanAgents();
+                showNotification('Agent 已停止', 'success');
+            } catch (error) {
+                showNotification('停止失败: ' + error.message, 'error');
+            }
+        }
+
+        async function restartAgent(agentId) {
+            showNotification(`正在重启 ${agentId}...`, 'info');
+
+            try {
+                const response = await fetch(`${API_BASE}/restart/${agentId}`, {
+                    method: 'POST'
+                });
+
+                if (!response.ok) throw new Error('重启请求失败');
+
+                await scanAgents();
+                showNotification('Agent 已重启', 'success');
+            } catch (error) {
+                showNotification('重启失败: ' + error.message, 'error');
+            }
+        }
+
+        async function startAgent(agentId) {
+            await restartAgent(agentId);
+        }
+
+        function exportReport() {
+            const report = {
+                timestamp: new Date().toISOString(),
+                agents: currentAgents,
+                summary: {
+                    total: currentAgents.length,
+                    avgScore: Math.round(
+                        currentAgents.reduce((sum, agent) => sum + agent.score, 0) / currentAgents.length
+                    ),
+                    totalIssues: currentAgents.reduce(
+                        (sum, agent) => sum + agent.issues.length, 0
+                    )
+                }
+            };
+
+            const blob = new Blob([JSON.stringify(report, null, 2)], { type: 'application/json' });
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = `agentguard-report-${Date.now()}.json`;
+            a.click();
+
+            showNotification('报告已导出', 'success');
+        }
+    </script>
+</body>
+</html>

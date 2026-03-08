@@ -140,14 +140,36 @@ agentguard --version
 
 ---
 
-## 🎯 使用示例
+## 🎯 使用方式
 
-### 1. 扫描所有 AI Agents
+### 方式 1: Web 可视化界面（推荐）🌐
+
+启动 Web UI：
+```bash
+npm run web
+```
+
+然后在浏览器打开：**http://localhost:3000**
+
+**功能特点**：
+- 🎨 直观的可视化界面
+- 📊 实时安全评分展示
+- 🔧 一键修复按钮
+- 📈 统计数据仪表板
+- 📱 响应式设计，支持平板
+
+详细使用指南：[Web UI 使用指南](docs/WEB_UI_GUIDE.md)
+
+---
+
+### 方式 2: 命令行界面（CLI）
+
+#### 1. 扫描所有 AI Agents
 ```bash
 agentguard scan
 ```
 
-输出示例：
+**CLI 输出示例**：
 ```
 ╔══════════════════════════════════════════════════════╗
 ║          AgentGuard - AI Agent 安全扫描报告          ║
@@ -167,7 +189,10 @@ agentguard scan
 ╚══════════════════════════════════════════════════════╝
 ```
 
-### 2. 一键修复
+**Web UI 效果**：
+![AgentGuard Web UI](docs/screenshots/web-ui.png)
+
+#### 2. 一键修复
 ```bash
 agentguard fix openclaw
 ```
@@ -184,7 +209,7 @@ Fixing OpenClaw...
 🎉 安全评分从 45 提升到 90!
 ```
 
-### 3. 查看状态
+#### 3. 查看状态
 ```bash
 agentguard status
 ```
@@ -198,7 +223,7 @@ Claude Desktop: ○ 未运行
 Cursor:         ● 运行中 (PID 23456)
 ```
 
-### 4. 停止/重启 Agent
+#### 4. 停止/重启 Agent
 ```bash
 # 停止
 agentguard stop openclaw
@@ -207,7 +232,7 @@ agentguard stop openclaw
 agentguard restart openclaw
 ```
 
-### 5. 导出 JSON 报告
+#### 5. 导出 JSON 报告
 ```bash
 agentguard scan --json > security-report.json
 ```

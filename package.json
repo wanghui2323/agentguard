@@ -32,6 +32,8 @@
   "scripts": {
     "dev": "tsx watch src/cli/index.ts",
     "build": "tsc",
+    "server": "tsx src/server/index.ts",
+    "web": "npm run server",
     "test": "jest",
     "lint": "eslint . --ext .ts",
     "format": "prettier --write \"src/**/*.ts\"",
