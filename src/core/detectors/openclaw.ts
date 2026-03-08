@@ -346,7 +346,12 @@ export class OpenClawDetector implements AgentDetector {
 
     // Start OpenClaw
     try {
-      await execAsync('openclaw gateway &', { detached: true });
+      // Use spawn instead of exec for background process
+      const { spawn } = require('child_process');
+      spawn('openclaw', ['gateway'], {
+        detached: true,
+        stdio: 'ignore'
+      }).unref();
     } catch (error) {
       throw new Error(`Failed to restart OpenClaw: ${error}`);
     }
