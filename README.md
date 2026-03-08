@@ -1,10 +1,18 @@
+<div align="center">
+
 # 🛡️ AgentGuard
 
-> The security control center for local AI agents - monitor, protect, and manage all your AI assistants
+**The security control center for local AI agents**
+
+English | [简体中文](README_CN.md)
 
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 [![Node.js Version](https://img.shields.io/badge/node-%3E%3D18.0.0-brightgreen)](https://nodejs.org/)
 [![TypeScript](https://img.shields.io/badge/TypeScript-5.3-blue)](https://www.typescriptlang.org/)
+
+</div>
+
+---
 
 ## 🚀 What is AgentGuard?
 
@@ -242,6 +250,8 @@ MIT License - see [LICENSE](LICENSE) for details
 - Claude Desktop for MCP security guidelines
 - The open-source community
 
+Built with ❤️ by [wanghui2323](https://github.com/wanghui2323) and Claude Opus 4.6
+
 ## 📞 Support
 
 - 🐛 [Report Issues](https://github.com/yourusername/agentguard/issues)
@@ -254,4 +264,8 @@ AgentGuard is a security monitoring tool. It does not provide absolute security 
 
 ---
 
-Made with ❤️ by the AgentGuard team
+<div align="center">
+
+Made with ❤️ by [wanghui2323](https://github.com/wanghui2323) and Claude Opus 4.6
+
+</div>
