@@ -62,10 +62,46 @@ export interface PermissionRisk {
 export interface TokenUsage {
   agentId: string;
   agentName: string;
-  tokens: number;
+  inputTokens: number;
+  outputTokens: number;
+  totalTokens: number;
   estimatedCost: number;
   period: 'daily' | 'weekly' | 'monthly';
   timestamp: Date;
+}
+
+export interface TokenStats {
+  agent: Agent;
+  today: TokenUsage;
+  thisWeek: TokenUsage;
+  thisMonth: TokenUsage;
+  history?: TokenUsageHistory[];
+}
+
+export interface TokenUsageHistory {
+  date: Date;
+  inputTokens: number;
+  outputTokens: number;
+  totalTokens: number;
+  estimatedCost: number;
+}
+
+export interface CostBudget {
+  daily?: number;
+  weekly?: number;
+  monthly?: number;
+}
+
+export interface TokenReport {
+  generatedAt: Date;
+  agents: TokenStats[];
+  totalCost: {
+    today: number;
+    thisWeek: number;
+    thisMonth: number;
+  };
+  budget?: CostBudget;
+  alerts: string[];
 }
 
 export interface FixResult {

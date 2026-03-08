@@ -5,16 +5,19 @@
 import { Command } from 'commander';
 import chalk from 'chalk';
 import ora, { Ora } from 'ora';
+import * as path from 'path';
 import { SecurityScanner } from '../core/scanner';
 import { AutoFixer } from '../core/fixer';
-import type { SecurityScanResult } from '../types';
+import { TokenTracker } from '../core/token-tracker';
+import { ReportExporter } from '../core/report-exporter';
+import type { SecurityScanResult, TokenReport } from '../types';
 
 const program = new Command();
 
 program
   .name('agentguard')
   .description('Security control center for local AI agents')
-  .version('0.2.0');
+  .version('0.3.0');
 
 /**
  * Scan command
@@ -230,6 +233,101 @@ program
   });
 
 /**
+ * Tokens command
+ */
+program
+  .command('tokens')
+  .description('Show token usage and cost statistics')
+  .option('--json', 'Output in JSON format')
+  .option('--budget-daily <amount>', 'Set daily budget limit (USD)')
+  .option('--budget-weekly <amount>', 'Set weekly budget limit (USD)')
+  .option('--budget-monthly <amount>', 'Set monthly budget limit (USD)')
+  .action(async (options) => {
+    try {
+      const scanner = new SecurityScanner();
+      const tracker = new TokenTracker();
+
+      // Set budget if provided
+      if (options.budgetDaily || options.budgetWeekly || options.budgetMonthly) {
+        tracker.setBudget({
+          daily: options.budgetDaily ? parseFloat(options.budgetDaily) : undefined,
+          weekly: options.budgetWeekly ? parseFloat(options.budgetWeekly) : undefined,
+          monthly: options.budgetMonthly ? parseFloat(options.budgetMonthly) : undefined
+        });
+      }
+
+      const spinner = ora('Analyzing token usage...').start();
+      const results = await scanner.scanAll();
+      const agents = results.map(r => r.agent);
+      const report = await tracker.getTokenReport(agents);
+      spinner.succeed('Token analysis complete');
+
+      if (options.json) {
+        console.log(JSON.stringify(report, null, 2));
+        return;
+      }
+
+      displayTokenReport(report);
+    } catch (error) {
+      console.error(chalk.red('Error:'), error);
+      process.exit(1);
+    }
+  });
+
+/**
+ * Export command
+ */
+program
+  .command('export')
+  .description('Export security report to file')
+  .option('-f, --format <format>', 'Export format (html, pdf, markdown)', 'html')
+  .option('-o, --output <path>', 'Output file path')
+  .option('--no-tokens', 'Exclude token usage from report')
+  .action(async (options) => {
+    try {
+      const scanner = new SecurityScanner();
+      const exporter = new ReportExporter();
+
+      const spinner = ora('Generating security report...').start();
+
+      // Scan all agents
+      const results = await scanner.scanAll();
+
+      // Get token report if requested
+      let tokenReport: TokenReport | null = null;
+      if (options.tokens) {
+        const tracker = new TokenTracker();
+        const agents = results.map(r => r.agent);
+        tokenReport = await tracker.getTokenReport(agents);
+      }
+
+      // Determine output path
+      const format = options.format as 'html' | 'pdf' | 'markdown';
+      const timestamp = new Date().toISOString().replace(/[:.]/g, '-').slice(0, 19);
+      const defaultFilename = `agentguard-report-${timestamp}.${format === 'markdown' ? 'md' : format}`;
+      const outputPath = options.output || path.join(process.cwd(), defaultFilename);
+
+      // Export report
+      await exporter.exportScanResults(results, tokenReport, {
+        format,
+        outputPath,
+        includeTokens: options.tokens
+      });
+
+      spinner.succeed(`Report exported successfully`);
+      console.log(chalk.green('\n✓ Report saved to:'), chalk.cyan(outputPath));
+
+      if (format === 'pdf') {
+        console.log(chalk.yellow('\n💡 Note: PDF export requires additional steps.'));
+        console.log(chalk.dim('   See instructions in the generated .txt file.'));
+      }
+    } catch (error) {
+      console.error(chalk.red('Error:'), error);
+      process.exit(1);
+    }
+  });
+
+/**
  * Display scan results in a nice format
  */
 function displayScanResults(results: SecurityScanResult[]): void {
@@ -329,6 +427,73 @@ function getSeverityIcon(severity: string): string {
     case 'low': return chalk.green('🟢');
     default: return 'ℹ️';
   }
+}
+
+/**
+ * Display token usage report
+ */
+function displayTokenReport(report: TokenReport): void {
+  console.log(chalk.bold('\n╔══════════════════════════════════════════════════════╗'));
+  console.log(chalk.bold('║          AgentGuard - Token Usage Report            ║'));
+  console.log(chalk.bold('╠══════════════════════════════════════════════════════╣'));
+  console.log(`║  Generated: ${report.generatedAt.toLocaleString()}              ║`);
+  console.log(chalk.bold('╚══════════════════════════════════════════════════════╝'));
+
+  // Overall summary
+  console.log(chalk.bold('\n💰 Cost Summary:'));
+  console.log(`  Today:      ${chalk.green('$' + report.totalCost.today.toFixed(2))}`);
+  console.log(`  This Week:  ${chalk.green('$' + report.totalCost.thisWeek.toFixed(2))}`);
+  console.log(`  This Month: ${chalk.green('$' + report.totalCost.thisMonth.toFixed(2))}`);
+
+  // Budget info
+  if (report.budget && (report.budget.daily || report.budget.weekly || report.budget.monthly)) {
+    console.log(chalk.bold('\n📊 Budget:'));
+    if (report.budget.daily) {
+      const pct = (report.totalCost.today / report.budget.daily) * 100;
+      console.log(`  Daily:   $${report.totalCost.today.toFixed(2)} / $${report.budget.daily.toFixed(2)} (${pct.toFixed(0)}%)`);
+    }
+    if (report.budget.weekly) {
+      const pct = (report.totalCost.thisWeek / report.budget.weekly) * 100;
+      console.log(`  Weekly:  $${report.totalCost.thisWeek.toFixed(2)} / $${report.budget.weekly.toFixed(2)} (${pct.toFixed(0)}%)`);
+    }
+    if (report.budget.monthly) {
+      const pct = (report.totalCost.thisMonth / report.budget.monthly) * 100;
+      console.log(`  Monthly: $${report.totalCost.thisMonth.toFixed(2)} / $${report.budget.monthly.toFixed(2)} (${pct.toFixed(0)}%)`);
+    }
+  }
+
+  // Alerts
+  if (report.alerts.length > 0) {
+    console.log(chalk.bold('\n⚠️  Budget Alerts:'));
+    for (const alert of report.alerts) {
+      console.log(chalk.yellow(`  • ${alert}`));
+    }
+  }
+
+  // Per-agent breakdown
+  console.log(chalk.bold('\n🤖 Per-Agent Breakdown:\n'));
+
+  for (const stats of report.agents) {
+    console.log(chalk.bold(`  ${stats.agent.name}:`));
+    console.log(`    Today:      ${formatTokens(stats.today)} → ${chalk.green('$' + stats.today.estimatedCost.toFixed(2))}`);
+    console.log(`    This Week:  ${formatTokens(stats.thisWeek)} → ${chalk.green('$' + stats.thisWeek.estimatedCost.toFixed(2))}`);
+    console.log(`    This Month: ${formatTokens(stats.thisMonth)} → ${chalk.green('$' + stats.thisMonth.estimatedCost.toFixed(2))}`);
+    console.log();
+  }
+
+  console.log(chalk.dim('💡 Tip: Set budget limits with --budget-daily, --budget-weekly, or --budget-monthly'));
+  console.log();
+}
+
+/**
+ * Format token count for display
+ */
+function formatTokens(usage: any): string {
+  const total = usage.totalTokens.toLocaleString();
+  if (usage.inputTokens > 0 && usage.outputTokens > 0) {
+    return `${total} tokens (${usage.inputTokens.toLocaleString()} in / ${usage.outputTokens.toLocaleString()} out)`;
+  }
+  return `${total} tokens`;
 }
 
 program.parse();

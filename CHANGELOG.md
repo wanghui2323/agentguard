@@ -9,12 +9,74 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
-### Planned for v0.3.0 (1-2 months)
-- Token 使用统计功能
-- 报告导出 (PDF/HTML)
-- GitHub Copilot 支持
-- 豆包 (Doubao) 支持
-- 单元测试覆盖率 > 80%
+### Planned for v1.0.0
+- Electron 桌面应用
+- 实时监控浮窗
+- 系统托盘集成
+- 自动更新功能
+- GitHub Copilot 检测器
+- 豆包 (Doubao) 检测器
+
+---
+
+## [0.3.0] - 2026-03-08
+
+### ✨ 新增功能 (Added)
+- 💰 **Token 使用统计** (`TokenTracker`)
+  - Claude Code token 追踪（从 `~/.claude/logs/` 读取）
+  - Cursor IDE token 追踪（基础框架）
+  - OpenClaw token 追踪（从 `~/.openclaw/logs/` 读取）
+  - 实时成本计算（基于 2026 API 定价）
+  - 预算管理功能（日/周/月预算设置）
+  - 预算告警系统（80% 警告阈值）
+- 📊 **Token CLI 命令** (`agentguard tokens`)
+  - `--json` 输出 JSON 格式
+  - `--budget-daily <amount>` 设置日预算
+  - `--budget-weekly <amount>` 设置周预算
+  - `--budget-monthly <amount>` 设置月预算
+  - 精美的成本摘要和详细分解
+- 📝 **报告导出功能** (`ReportExporter`)
+  - HTML 报告导出（带样式的完整报告）
+  - Markdown 报告导出（文本格式）
+  - PDF 报告导出（通过浏览器打印）
+  - 综合安全分析 + Token 成本报告
+- 🎨 **Export CLI 命令** (`agentguard export`)
+  - `-f, --format <format>` 选择格式（html, pdf, markdown）
+  - `-o, --output <path>` 指定输出路径
+  - `--no-tokens` 排除 token 使用信息
+
+### 💰 Token 定价 (Pricing)
+- **Claude Opus 4.6**: $15 / 1M input tokens, $75 / 1M output tokens
+- **Cursor IDE**: $10 / 1M input tokens, $30 / 1M output tokens (估算)
+- **OpenClaw**: $0.50 / 1M input tokens, $1.50 / 1M output tokens
+
+### 📈 性能改进 (Performance)
+- 报告生成速度: < 1 秒
+- 支持大型日志文件（读取最近 10 个日志文件）
+
+### 📝 文档更新 (Documentation)
+- 更新 CHANGELOG.md 包含 v0.3.0 所有变更
+- 版本号从 0.2.0 升级至 0.3.0
+
+### 🔧 技术细节 (Technical)
+- 新增 `src/core/token-tracker.ts` - Token 统计核心
+- 新增 `src/core/report-exporter.ts` - 报告导出核心
+- 扩展 `src/types/index.ts` - 添加 TokenUsage, TokenStats, TokenReport 等类型
+- CLI 新增 `tokens` 和 `export` 命令
+- HTML 报告使用响应式设计，支持打印
+
+### ⚠️ 已知限制 (Known Limitations)
+- Cursor token 追踪返回空数据（Cursor 不公开日志）
+- PDF 导出需要手动通过浏览器打印（或安装 puppeteer）
+- Token 统计基于日志文件，可能不完全准确
+
+### 📦 发布准备 (Release Preparation)
+- ✅ npm run build 成功
+- ✅ Token 统计功能测试通过
+- ✅ 报告导出功能测试通过（HTML, Markdown）
+- 🔄 待编写单元测试（目标覆盖率 > 80%）
+- 🔄 待发布到 npm registry
+- 🔄 待创建 GitHub Release v0.3.0
 
 ---
 

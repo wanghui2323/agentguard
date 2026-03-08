@@ -1,6 +1,6 @@
 {
   "name": "agentguard",
-  "version": "0.2.0",
+  "version": "0.3.0",
   "description": "The security control center for local AI agents - monitor, protect, and manage all your AI assistants",
   "keywords": [
     "ai",

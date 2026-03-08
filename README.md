@@ -91,6 +91,21 @@ AgentGuard 帮你**自动检测和修复**这些问题。
 - 查看运行状态
 - 批量操作
 
+### 💰 Token 统计 (v0.3.0 新增)
+实时追踪 AI Agent 的 Token 使用和成本：
+- 按天/周/月统计 Token 消耗
+- 实时成本计算（基于最新 API 定价）
+- 预算管理和告警（日/周/月预算）
+- 每个 Agent 的详细使用分解
+- 支持 JSON 格式导出
+
+### 📝 报告导出 (v0.3.0 新增)
+生成专业的安全和成本报告：
+- **HTML 报告** - 精美的可视化报告，支持打印
+- **Markdown 报告** - 文本格式，易于分享
+- **PDF 报告** - 通过浏览器打印或 puppeteer
+- 综合安全分析 + Token 成本统计
+
 ---
 
 ## 🤖 支持的 AI Agents
@@ -254,7 +269,46 @@ agentguard stop openclaw
 agentguard restart openclaw
 ```
 
-#### 5. 导出 JSON 报告
+#### 5. Token 使用统计 (v0.3.0 新增)
+```bash
+# 查看 Token 使用和成本
+agentguard tokens
+
+# 输出示例
+💰 Cost Summary:
+  Today:      $2.45
+  This Week:  $18.32
+  This Month: $67.89
+
+🤖 Per-Agent Breakdown:
+  Claude Code:
+    Today:      245,000 tokens (180K in / 65K out) → $3.60
+    This Week:  1,820,000 tokens → $25.20
+    This Month: 6,789,000 tokens → $89.50
+
+# 设置预算并追踪
+agentguard tokens --budget-monthly 100 --budget-weekly 25
+
+# JSON 格式导出
+agentguard tokens --json > token-report.json
+```
+
+#### 6. 导出安全报告 (v0.3.0 新增)
+```bash
+# 导出 HTML 报告（默认）
+agentguard export
+
+# 导出 Markdown 报告
+agentguard export --format markdown -o report.md
+
+# 导出 PDF 报告（需浏览器打印或 puppeteer）
+agentguard export --format pdf -o report.pdf
+
+# 导出报告但不包含 Token 统计
+agentguard export --no-tokens
+```
+
+#### 7. 导出 JSON 报告
 ```bash
 agentguard scan --json > security-report.json
 ```
