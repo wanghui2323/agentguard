@@ -1,14 +1,14 @@
 import * as http from 'http';
 import * as fs from 'fs';
 import * as path from 'path';
-import { Scanner } from '../core/scanner';
-import { Fixer } from '../core/fixer';
-import { Controller } from '../core/controller';
+import { SecurityScanner } from '../core/scanner';
+import { AutoFixer } from '../core/fixer';
+import { AgentController } from '../core/controller';
 
 const PORT = 3000;
-const scanner = new Scanner();
-const fixer = new Fixer();
-const controller = new Controller();
+const scanner = new SecurityScanner();
+const fixer = new AutoFixer();
+const controller = new AgentController();
 
 // MIME types
 const mimeTypes: Record<string, string> = {
@@ -73,7 +73,7 @@ async function handleApiRequest(req: http.IncomingMessage, res: http.ServerRespo
         return;
       }
 
-      const detector = scanner['detectors'].find((d: any) => d.id === agentId);
+      const detector = (scanner as any)['detectors'].find((d: { id: string }) => d.id === agentId);
       const fixResults = [];
 
       for (const issue of agentResult.issues) {
