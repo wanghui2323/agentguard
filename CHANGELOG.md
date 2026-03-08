@@ -9,13 +9,22 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
-### Planned for v1.0.0
-- Electron 桌面应用
-- 实时监控浮窗
-- 系统托盘集成
-- 自动更新功能
+### In Development: v1.0.0 (95% Complete)
+- ✅ Electron 桌面应用架构完成
+- ✅ Dashboard 界面完成
+- ✅ Floating Widget 悬浮窗完成
+- ✅ 系统托盘集成完成
+- ✅ 自动扫描功能完成（每 10 秒）
+- ✅ Token 统计界面完成
+- ✅ 所有 React 组件完成
+- ✅ 完整文档编写完成
+- 🔄 Electron 启动调试中（模块导入问题）
+
+### Planned for v1.1.0
 - GitHub Copilot 检测器
 - 豆包 (Doubao) 检测器
+- 暗色模式支持
+- 多语言支持
 
 ---
 

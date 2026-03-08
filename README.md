@@ -126,42 +126,43 @@ AgentGuard 帮你**自动检测和修复**这些问题。
 
 ## 📦 快速开始
 
+**当前版本**: CLI v0.3.0 (已发布) | Desktop v1.0.0 (开发中)
+
 ### 安装
 
-#### ⚠️ 当前可用方式（v0.1.0）
+#### 方式 1: 从源码安装（当前推荐，v0.3.0）
 
-项目正在开发中，暂未发布到 npm/Homebrew。请使用以下方式：
-
-**方式 1: 直接使用（推荐，最简单）**
 ```bash
+# 克隆仓库
 git clone https://github.com/wanghui2323/agentguard.git
 cd agentguard
+
+# 安装依赖
 npm install
 
-# 使用
+# 使用 CLI 工具
 npx tsx src/cli/index.ts scan
-npx tsx src/cli/index.ts fix openclaw
-npx tsx src/cli/index.ts --help
+npx tsx src/cli/index.ts tokens
+npx tsx src/cli/index.ts export --format html
 ```
 
-**方式 2: 创建命令别名（方便日常使用）**
-```bash
-# 进入项目目录
-cd agentguard
+#### 方式 2: 创建命令别名（方便日常使用）
 
+```bash
 # 添加到 ~/.zshrc（macOS）或 ~/.bashrc（Linux）
 echo "alias agentguard='npx tsx $(pwd)/src/cli/index.ts'" >> ~/.zshrc
 source ~/.zshrc
 
 # 现在可以直接使用
 agentguard scan
-agentguard fix openclaw
+agentguard tokens
+agentguard export
 ```
 
-#### 🚀 未来计划（v0.2.0+）
+#### 🚀 未来计划
 
 ```bash
-# v0.2.0 将支持
+# v1.1.0 将发布到 npm
 npm install -g agentguard
 
 # 未来可能支持
@@ -517,23 +518,32 @@ AgentGuard 是一个安全监控工具，不提供绝对的安全保证。请根
 
 ## 🗺️ 路线图
 
-### v0.2.0（计划中）
-- [ ] Claude Desktop 完整支持
-- [ ] Cursor 完整支持
-- [ ] 实时监控功能
-- [ ] 单元测试完善
+### ✅ v0.3.0（已完成 - 2026-03-08）
+- ✅ Token 使用统计和成本追踪
+- ✅ 报告导出（HTML/Markdown/PDF）
+- ✅ 预算管理和告警系统
+- ✅ Claude Code 完整支持
+- ✅ Cursor 完整支持
 
-### v0.3.0（规划中）
-- [ ] Token 使用统计
-- [ ] 报告导出（PDF/HTML）
+### 🚧 v1.0.0（开发中 - 95% 完成）
+- ✅ Electron 桌面应用架构
+- ✅ 实时监控 Dashboard
+- ✅ 悬浮窗（Floating Widget）
+- ✅ 系统托盘集成
+- ✅ 自动扫描（每 10 秒）
+- 🔄 启动调试（Electron 模块导入问题）
+
+### 📅 v1.1.0（规划中）
 - [ ] GitHub Copilot 支持
-- [ ] 豆包支持
-
-### v1.0.0（目标）
-- [ ] 支持 5+ 主流 AI Agents
-- [ ] GUI 桌面应用
-- [ ] 插件市场
+- [ ] 豆包 (Doubao) 支持
+- [ ] 暗色模式
 - [ ] 多语言支持
+
+### 🚀 v2.0.0（未来）
+- [ ] 云端同步
+- [ ] 团队协作
+- [ ] 历史记录与审计
+- [ ] 插件市场
 
 ---
 

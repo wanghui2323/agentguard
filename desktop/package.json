@@ -1,0 +1,82 @@
+{
+  "name": "agentguard-desktop",
+  "version": "1.0.0",
+  "description": "AgentGuard Desktop - AI Agent Security Monitoring Dashboard",
+  "main": "dist/main/desktop/src/main/index.js",
+  "scripts": {
+    "dev": "npm run build && concurrently \"npm run watch:main\" \"npm run dev:renderer\" \"npm run start:electron\"",
+    "dev:renderer": "vite",
+    "watch:main": "tsc -p tsconfig.main.json --watch",
+    "build": "npm run build:main && npm run build:renderer",
+    "build:main": "tsc -p tsconfig.main.json",
+    "build:renderer": "vite build",
+    "start": "electron .",
+    "start:electron": "wait-on http://localhost:3000 dist/main/index.js && electron .",
+    "package": "electron-builder",
+    "package:mac": "electron-builder --mac",
+    "package:win": "electron-builder --win"
+  },
+  "dependencies": {
+    "electron-store": "^8.2.0",
+    "electron-updater": "^6.1.8"
+  },
+  "devDependencies": {
+    "@types/node": "^20.11.0",
+    "@types/react": "^18.2.55",
+    "@types/react-dom": "^18.2.19",
+    "@vitejs/plugin-react": "^4.2.1",
+    "autoprefixer": "^10.4.17",
+    "concurrently": "^8.2.2",
+    "electron": "^28.2.0",
+    "electron-builder": "^24.9.1",
+    "postcss": "^8.4.35",
+    "react": "^18.2.0",
+    "react-dom": "^18.2.0",
+    "tailwindcss": "^3.4.1",
+    "tsx": "^4.7.0",
+    "typescript": "^5.3.0",
+    "vite": "^5.1.0",
+    "vite-plugin-electron": "^0.28.2",
+    "wait-on": "^7.2.0"
+  },
+  "build": {
+    "appId": "com.agentguard.desktop",
+    "productName": "AgentGuard",
+    "directories": {
+      "output": "release"
+    },
+    "files": [
+      "dist/**/*",
+      "package.json"
+    ],
+    "mac": {
+      "category": "public.app-category.developer-tools",
+      "icon": "build/icon.icns",
+      "target": [
+        "dmg",
+        "zip"
+      ]
+    },
+    "win": {
+      "icon": "build/icon.ico",
+      "target": [
+        "nsis",
+        "portable"
+      ]
+    },
+    "dmg": {
+      "contents": [
+        {
+          "x": 130,
+          "y": 220
+        },
+        {
+          "x": 410,
+          "y": 220,
+          "type": "link",
+          "path": "/Applications"
+        }
+      ]
+    }
+  }
+}
