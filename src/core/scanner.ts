@@ -3,6 +3,8 @@
  */
 import type { Agent, AgentDetector, SecurityScanResult, SecurityIssue } from '../types';
 import { OpenClawDetector } from './detectors/openclaw';
+import { ClaudeDetector } from './detectors/claude';
+import { CursorDetector } from './detectors/cursor';
 
 export class SecurityScanner {
   private detectors: Map<string, AgentDetector> = new Map();
@@ -10,9 +12,11 @@ export class SecurityScanner {
   constructor() {
     // Register default detectors
     this.registerDetector(new OpenClawDetector());
+    this.registerDetector(new ClaudeDetector());
+    this.registerDetector(new CursorDetector());
     // TODO: Add more detectors
-    // this.registerDetector(new ClaudeDesktopDetector());
-    // this.registerDetector(new CursorDetector());
+    // this.registerDetector(new CopilotDetector());
+    // this.registerDetector(new DoubaoDetector());
   }
 
   /**
