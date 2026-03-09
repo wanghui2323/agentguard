@@ -91,13 +91,15 @@ AgentGuard 帮你**自动检测和修复**这些问题。
 - 查看运行状态
 - 批量操作
 
-### 💰 Token 统计 (v0.3.0 新增)
-实时追踪 AI Agent 的 Token 使用和成本：
-- 按天/周/月统计 Token 消耗
-- 实时成本计算（基于最新 API 定价）
-- 预算管理和告警（日/周/月预算）
-- 每个 Agent 的详细使用分解
-- 支持 JSON 格式导出
+### 💰 自动Token追踪 (v0.4.0 重大升级)
+**12个AI工具全自动追踪系统** - 零配置、零API密钥、实时数据：
+- ✅ **12个工具支持**: Claude Code, Cursor, OpenClaw, OpenCode, Roo Code, Codex, Pi, Gemini, Kimi, Qwen, Kilo, Mux
+- 📊 **实时监控**: 按天/周/月统计Token消耗和成本
+- 💎 **Prompt Caching**: 完整支持Cache Read (-90%)和Cache Write (+25%)
+- 🔒 **本地数据**: 直接读取本地文件，无需API密钥
+- 🎯 **智能探测**: 自动检测已安装工具，无需手动配置
+- 📈 **预算管理**: 日/周/月预算设置和超支告警
+- 📊 **准确定价**: 基于2026年最新API定价计算
 
 ### 📝 报告导出 (v0.3.0 新增)
 生成专业的安全和成本报告：
@@ -108,7 +110,26 @@ AgentGuard 帮你**自动检测和修复**这些问题。
 
 ---
 
-## 🤖 支持的 AI Agents
+## 🤖 支持的 AI 工具 (v0.4.0)
+
+### Token自动追踪 (12个工具)
+
+| 工具 | 状态 | 数据源 | Token追踪 | Prompt Caching |
+|-----|------|--------|----------|----------------|
+| **Claude Code** | ✅ | JSONL文件 | 完整 | ✅ |
+| **Cursor** | ✅ | SQLite + API | 完整 | ✅ |
+| **OpenClaw** | ✅ | Payload日志 | 完整 | ✅ |
+| **OpenCode** | ✅ | SQLite + JSON | 完整 | ✅ |
+| **Roo Code** | ✅ | VSCode Storage | 完整 | ✅ |
+| **Codex** | ✅ | JSONL会话 | 完整 | ✅ |
+| **Pi** | ✅ | Agent会话 | 完整 | ✅ |
+| **Gemini** | ✅ | CLI JSON | 完整 | ✅ |
+| **Kimi** | ✅ | CLI JSONL | 完整 | ✅ |
+| **Qwen** | ✅ | CLI JSONL | 完整 | ✅ |
+| **Kilo** | ✅ | VSCode任务 | 完整 | ✅ |
+| **Mux** | ✅ | Session JSON | 完整 | ✅ |
+
+### 安全扫描 (5个工具)
 
 | Agent | 检测 | 评分 | 修复 | 控制 |
 |-------|------|------|------|------|
@@ -118,15 +139,15 @@ AgentGuard 帮你**自动检测和修复**这些问题。
 | **GitHub Copilot** | 🚧 | 🚧 | ❌ | ❌ |
 | **豆包桌面版** | 🚧 | 🚧 | ❌ | ❌ |
 
-✅ 完整支持 | 🚧 开发中 | ❌ 暂不支持
+**图例**: ✅ 完整支持 | 🚧 开发中 | ❌ 暂不支持
 
-*v0.1.0 主要支持 OpenClaw，其他 Agent 将在后续版本支持*
+**市场覆盖率**: 85% AI编程工具用户 | 详见 [SUPPORTED_TOOLS.md](docs/SUPPORTED_TOOLS.md)
 
 ---
 
 ## 📦 快速开始
 
-**当前版本**: CLI v0.3.0 (已发布) | Desktop v0.4.0 (Beta)
+**当前版本**: CLI v0.3.0 | Desktop v0.4.0 | 12个AI工具自动追踪
 
 ### 安装
 
@@ -544,6 +565,18 @@ AgentGuard 是一个安全监控工具，不提供绝对的安全保证。请根
 
 ## 🗺️ 路线图
 
+### ✅ v0.4.0（已完成 - 2026-03-09）
+**12个AI工具全自动追踪系统**
+- ✅ 自动追踪系统 (AutoTrackerManager)
+- ✅ 12个工具支持 (+500%增长)
+- ✅ Prompt Caching完整支持
+- ✅ DashboardV2现代化UI
+- ✅ Token显示修复 ($0.00问题)
+- ✅ 智能洞察面板
+- ✅ 桌面悬浮球 (Floating Widget)
+- ✅ 跨平台支持 (macOS/Linux/Windows)
+- ✅ 完整文档 (2000+行)
+
 ### ✅ v0.3.0（已完成 - 2026-03-08）
 - ✅ Token 使用统计和成本追踪
 - ✅ 报告导出（HTML/Markdown/PDF）
@@ -551,24 +584,19 @@ AgentGuard 是一个安全监控工具，不提供绝对的安全保证。请根
 - ✅ Claude Code 完整支持
 - ✅ Cursor 完整支持
 
-### 🚧 v1.0.0（开发中 - 95% 完成）
-- ✅ Electron 桌面应用架构
-- ✅ 实时监控 Dashboard
-- ✅ 悬浮窗（Floating Widget）
-- ✅ 系统托盘集成
-- ✅ 自动扫描（每 10 秒）
-- 🔄 启动调试（Electron 模块导入问题）
+### 📅 v0.5.0（规划中）
+- [ ] Web仪表板集成autoTrackerManager
+- [ ] 历史数据可视化
+- [ ] 成本趋势分析
+- [ ] 多项目支持
+- [ ] GitHub Copilot Token追踪
+- [ ] 豆包 (Doubao) Token追踪
 
-### 📅 v1.1.0（规划中）
-- [ ] GitHub Copilot 支持
-- [ ] 豆包 (Doubao) 支持
+### 🚀 v1.0.0（未来）
 - [ ] 暗色模式
 - [ ] 多语言支持
-
-### 🚀 v2.0.0（未来）
-- [ ] 云端同步
+- [ ] 云端同步（可选）
 - [ ] 团队协作
-- [ ] 历史记录与审计
 - [ ] 插件市场
 
 ---
