@@ -100,6 +100,7 @@ export interface TokenReport {
     thisWeek: number;
     thisMonth: number;
   };
+  totalTokens: number;
   budget?: CostBudget;
   alerts: string[];
 }

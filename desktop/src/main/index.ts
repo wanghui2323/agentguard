@@ -1,20 +1,22 @@
 /**
  * AgentGuard Desktop - Main Process
  */
-import { app, BrowserWindow, Tray, Menu, ipcMain, screen } from 'electron';
+import type { BrowserWindow as BrowserWindowType, Tray as TrayType } from 'electron';
 import * as path from 'path';
 import * as fs from 'fs';
-import { SecurityScanner } from '../../../src/core/scanner';
-import { TokenTracker } from '../../../src/core/token-tracker';
-import type { SecurityScanResult, TokenReport } from '../../../src/types';
 
-let mainWindow: BrowserWindow | null = null;
-let floatingWindow: BrowserWindow | null = null;
-let tray: Tray | null = null;
+// Import electron using destructuring directly
+const { app, BrowserWindow, Tray, Menu, ipcMain, screen } = require('electron');
+import { SecurityScanner } from '../../../src/core/scanner';
+import { autoTrackerManager } from '../../../src/core/trackers/AutoTrackerManager';
+import type { SecurityScanResult, TokenReport, Agent, TokenStats, TokenUsage } from '../../../src/types';
+
+let mainWindow: BrowserWindowType | null = null;
+let floatingWindow: BrowserWindowType | null = null;
+let tray: TrayType | null = null;
 let isQuitting = false;
 
 const scanner = new SecurityScanner();
-const tokenTracker = new TokenTracker();
 
 // Auto-scan interval (10 seconds)
 let scanInterval: NodeJS.Timeout | null = null;
@@ -182,9 +184,8 @@ async function performScan(): Promise<void> {
   try {
     const results = await scanner.scanAll();
 
-    // Get token report
-    const agents = results.map(r => r.agent);
-    const tokenReport = await tokenTracker.getTokenReport(agents);
+    // Get token report using autoTrackerManager
+    const tokenReport = await getTokenReportFromAutoTrackers();
 
     // Send to all windows
     if (mainWindow) {
@@ -218,6 +219,106 @@ async function performScan(): Promise<void> {
     }
   } catch (error) {
     console.error('Scan failed:', error);
+  }
+}
+
+/**
+ * Get token report from autoTrackerManager
+ */
+async function getTokenReportFromAutoTrackers(): Promise<TokenReport> {
+  try {
+    const usage = await autoTrackerManager.getAggregatedUsage();
+
+    // Convert autoTracker data to TokenReport format
+    const agentStats: TokenStats[] = [];
+
+    for (const [agentId, dailyCost] of Object.entries(usage.daily.byAgent)) {
+      const monthlyCost = usage.monthly.byAgent[agentId] || 0;
+
+      // Get tracker for this agent
+      const tracker = autoTrackerManager.getTracker(agentId);
+      if (!tracker) continue;
+
+      // Get detailed usage data
+      const dailyUsage = await tracker.getDailyUsage();
+      const monthlyUsage = await tracker.getMonthlyUsage();
+
+      // Create agent object
+      const agent: Agent = {
+        id: agentId,
+        name: tracker.agentName,
+        version: '1.0.0',
+        status: 'running',
+        installPath: '',
+        configPath: '',
+      };
+
+      // Create TokenUsage objects
+      const today: TokenUsage = {
+        agentId,
+        agentName: tracker.agentName,
+        inputTokens: dailyUsage.totalInputTokens,
+        outputTokens: dailyUsage.totalOutputTokens,
+        totalTokens: dailyUsage.totalInputTokens + dailyUsage.totalOutputTokens,
+        estimatedCost: dailyUsage.totalCost,
+        period: 'daily',
+        timestamp: new Date(),
+      };
+
+      const thisWeek: TokenUsage = {
+        agentId,
+        agentName: tracker.agentName,
+        inputTokens: monthlyUsage.totalInputTokens,
+        outputTokens: monthlyUsage.totalOutputTokens,
+        totalTokens: monthlyUsage.totalInputTokens + monthlyUsage.totalOutputTokens,
+        estimatedCost: monthlyCost,
+        period: 'weekly',
+        timestamp: new Date(),
+      };
+
+      const thisMonth: TokenUsage = {
+        agentId,
+        agentName: tracker.agentName,
+        inputTokens: monthlyUsage.totalInputTokens,
+        outputTokens: monthlyUsage.totalOutputTokens,
+        totalTokens: monthlyUsage.totalInputTokens + monthlyUsage.totalOutputTokens,
+        estimatedCost: monthlyCost,
+        period: 'monthly',
+        timestamp: new Date(),
+      };
+
+      agentStats.push({
+        agent,
+        today,
+        thisWeek,
+        thisMonth,
+      });
+    }
+
+    return {
+      generatedAt: new Date(),
+      agents: agentStats,
+      totalCost: {
+        today: usage.daily.total,
+        thisWeek: usage.monthly.total * 0.25, // Estimate weekly as 25% of monthly
+        thisMonth: usage.monthly.total,
+      },
+      totalTokens: agentStats.reduce((sum, s) => sum + s.today.totalTokens, 0),
+      alerts: [],
+    };
+  } catch (error) {
+    console.error('Failed to get token report from autoTrackers:', error);
+    return {
+      generatedAt: new Date(),
+      agents: [],
+      totalCost: {
+        today: 0,
+        thisWeek: 0,
+        thisMonth: 0,
+      },
+      totalTokens: 0,
+      alerts: [],
+    };
   }
 }
 

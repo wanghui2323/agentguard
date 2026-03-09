@@ -1,6 +1,8 @@
 import { app, BrowserWindow, Tray, Menu, nativeImage, screen, ipcMain, shell } from 'electron';
 import * as path from 'path';
-import { dataService } from '../services/DataService';
+import * as fs from 'fs';
+import * as os from 'os';
+import { dataServiceV2 as dataService } from '../services/DataServiceV2';
 
 let floatingWindow: BrowserWindow | null = null;
 let panelWindow: BrowserWindow | null = null;
@@ -9,15 +11,78 @@ let tray: Tray | null = null;
 // 状态更新定时器
 let statusUpdateTimer: NodeJS.Timeout | null = null;
 
+// 配置文件路径
+const CONFIG_DIR = path.join(os.homedir(), '.agentguard');
+const POSITION_FILE = path.join(CONFIG_DIR, 'window-position.json');
+
+// 加载保存的位置
+function loadSavedPosition(): { x: number; y: number } | null {
+  try {
+    if (fs.existsSync(POSITION_FILE)) {
+      const data = fs.readFileSync(POSITION_FILE, 'utf-8');
+      return JSON.parse(data);
+    }
+  } catch (error) {
+    console.error('Failed to load position:', error);
+  }
+  return null;
+}
+
+// 保存位置
+function savePosition(x: number, y: number) {
+  try {
+    if (!fs.existsSync(CONFIG_DIR)) {
+      fs.mkdirSync(CONFIG_DIR, { recursive: true });
+    }
+    fs.writeFileSync(POSITION_FILE, JSON.stringify({ x, y }, null, 2));
+  } catch (error) {
+    console.error('Failed to save position:', error);
+  }
+}
+
+// 磁吸到屏幕边缘
+function snapToEdge(x: number, y: number, windowWidth: number, windowHeight: number) {
+  const { width, height } = screen.getPrimaryDisplay().workAreaSize;
+  const SNAP_DISTANCE = 30; // 磁吸距离
+
+  let newX = x;
+  let newY = y;
+
+  // 左边缘磁吸
+  if (x < SNAP_DISTANCE) {
+    newX = 10;
+  }
+  // 右边缘磁吸
+  else if (x + windowWidth > width - SNAP_DISTANCE) {
+    newX = width - windowWidth - 10;
+  }
+
+  // 上边缘磁吸
+  if (y < SNAP_DISTANCE) {
+    newY = 10;
+  }
+  // 下边缘磁吸
+  else if (y + windowHeight > height - SNAP_DISTANCE) {
+    newY = height - windowHeight - 10;
+  }
+
+  return { x: newX, y: newY };
+}
+
 // 创建悬浮球窗口
 function createFloatingBall() {
   const { width, height } = screen.getPrimaryDisplay().workAreaSize;
 
+  // 尝试加载保存的位置，否则使用默认位置
+  const savedPosition = loadSavedPosition();
+  const defaultX = width - 80;
+  const defaultY = 80;
+
   floatingWindow = new BrowserWindow({
     width: 60,
     height: 60,
-    x: width - 80, // 距离屏幕右边 80px
-    y: 80,         // 距离屏幕顶部 80px
+    x: savedPosition?.x ?? defaultX,
+    y: savedPosition?.y ?? defaultY,
     frame: false,
     transparent: true,
     alwaysOnTop: true,
@@ -30,15 +95,39 @@ function createFloatingBall() {
     },
   });
 
-  // 开发环境加载 HTML
-  if (process.env.NODE_ENV === 'development') {
-    floatingWindow.loadURL('http://localhost:5173/floating.html');
-  } else {
-    floatingWindow.loadFile(path.join(__dirname, '../renderer/floating.html'));
-  }
+  // 加载 HTML（直接使用编译后的文件）
+  floatingWindow.loadFile(path.join(__dirname, '../renderer/floating.html'));
 
   // 让窗口可拖动
   floatingWindow.setIgnoreMouseEvents(false);
+
+  // 监听窗口移动，实现磁吸和位置保存
+  let moveTimeout: NodeJS.Timeout | null = null;
+  floatingWindow.on('move', () => {
+    if (!floatingWindow) return;
+
+    const bounds = floatingWindow.getBounds();
+    const snapped = snapToEdge(bounds.x, bounds.y, bounds.width, bounds.height);
+
+    // 如果需要磁吸，更新位置
+    if (snapped.x !== bounds.x || snapped.y !== bounds.y) {
+      floatingWindow.setBounds({
+        x: snapped.x,
+        y: snapped.y,
+        width: bounds.width,
+        height: bounds.height,
+      });
+    }
+
+    // 防抖保存位置（移动停止500ms后保存）
+    if (moveTimeout) clearTimeout(moveTimeout);
+    moveTimeout = setTimeout(() => {
+      const finalBounds = floatingWindow?.getBounds();
+      if (finalBounds) {
+        savePosition(finalBounds.x, finalBounds.y);
+      }
+    }, 500);
+  });
 }
 
 // 创建快速面板
@@ -49,7 +138,7 @@ function createPanel() {
 
   panelWindow = new BrowserWindow({
     width: 320,
-    height: 400,
+    height: 420,  // 初始简洁模式高度（包含所有内容+展开按钮）
     x: floatingBounds.x - 320 + 60, // 面板右侧对齐悬浮球
     y: floatingBounds.y + 70,        // 面板在悬浮球下方
     frame: false,
@@ -64,11 +153,8 @@ function createPanel() {
     },
   });
 
-  if (process.env.NODE_ENV === 'development') {
-    panelWindow.loadURL('http://localhost:5173/panel.html');
-  } else {
-    panelWindow.loadFile(path.join(__dirname, '../renderer/panel.html'));
-  }
+  // 加载 HTML（直接使用编译后的文件）
+  panelWindow.loadFile(path.join(__dirname, '../renderer/panel.html'));
 
   panelWindow.once('ready-to-show', () => {
     panelWindow?.show();
@@ -215,9 +301,12 @@ function setupIpcHandlers() {
   // 获取详细数据
   ipcMain.handle('get-detailed-data', async () => {
     try {
-      return await dataService.getDetailedData();
+      console.log('[Main] 收到 get-detailed-data 请求');
+      const data = await dataService.getDetailedData();
+      console.log('[Main] 返回数据 - 今日:', data.costs.daily, '本月:', data.costs.monthly);
+      return data;
     } catch (error) {
-      console.error('Failed to get detailed data:', error);
+      console.error('[Main] 获取详细数据失败:', error);
       throw error;
     }
   });
@@ -253,6 +342,50 @@ function setupIpcHandlers() {
       // 窗口已销毁，重新创建
       createPanel();
     }
+  });
+
+  // 拖动相关事件
+  let dragStartPos: { x: number; y: number } | null = null;
+
+  ipcMain.on('start-drag', (_, { x, y }) => {
+    if (!floatingWindow) return;
+    const bounds = floatingWindow.getBounds();
+    dragStartPos = {
+      x: x - bounds.x,
+      y: y - bounds.y,
+    };
+  });
+
+  ipcMain.on('drag-move', (_, { x, y }) => {
+    if (!floatingWindow || !dragStartPos) return;
+
+    const newX = x - dragStartPos.x;
+    const newY = y - dragStartPos.y;
+
+    // 应用磁吸
+    const snapped = snapToEdge(newX, newY, 60, 60);
+    floatingWindow.setPosition(snapped.x, snapped.y);
+  });
+
+  ipcMain.on('stop-drag', () => {
+    if (!floatingWindow) return;
+    dragStartPos = null;
+
+    // 保存最终位置
+    const bounds = floatingWindow.getBounds();
+    savePosition(bounds.x, bounds.y);
+  });
+
+  // 调整面板高度
+  ipcMain.on('resize-panel', (_, { height }: { height: number }) => {
+    if (!panelWindow || panelWindow.isDestroyed()) return;
+    const bounds = panelWindow.getBounds();
+    panelWindow.setBounds({
+      x: bounds.x,
+      y: bounds.y,
+      width: 320,
+      height: height,
+    });
   });
 }
 

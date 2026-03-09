@@ -30,11 +30,13 @@ export class TokenTracker {
 
     const totalCost = this.calculateTotalCost(agentStats);
     const alerts = this.checkBudgetAlerts(totalCost);
+    const totalTokens = agentStats.reduce((sum, s) => sum + s.today.totalTokens, 0);
 
     return {
       generatedAt: new Date(),
       agents: agentStats,
       totalCost,
+      totalTokens,
       budget: this.budget,
       alerts
     };
