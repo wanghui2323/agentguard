@@ -1,21 +1,19 @@
 /**
- * Token Usage Tracker
+ * Token Usage Tracker (Fixed with REAL Claude data)
  */
-import * as fs from 'fs/promises';
-import * as path from 'path';
-import * as os from 'os';
 import type {
   Agent,
   TokenUsage,
   TokenStats,
-  TokenUsageHistory,
   TokenReport,
   CostBudget
 } from '../types';
-import { expandHome } from '../utils/config';
+import { getTodayTokens, getThisWeekTokens, getThisMonthTokens, parseClaudeStats } from './claude-stats-parser';
 
 export class TokenTracker {
   private budget: CostBudget = {};
+  private manualConfigCache: any = null;
+  private manualConfigCacheTime: number = 0;
 
   /**
    * Get token statistics for all agents
@@ -58,9 +56,6 @@ export class TokenTracker {
         case 'cursor':
           ({ today, thisWeek, thisMonth } = await this.getCursorTokenStats(agent));
           break;
-        case 'openclaw':
-          ({ today, thisWeek, thisMonth } = await this.getOpenClawTokenStats(agent));
-          break;
         default:
           return null;
       }
@@ -78,7 +73,8 @@ export class TokenTracker {
   }
 
   /**
-   * Get Claude Code token statistics (from tasks and projects)
+   * Get Claude token statistics from REAL data in ~/.claude/stats-cache.json
+   * 或从手动配置文件读取 (VS Code 插件)
    */
   private async getClaudeTokenStats(agent: Agent): Promise<{
     today: TokenUsage;
@@ -86,115 +82,118 @@ export class TokenTracker {
     thisMonth: TokenUsage;
   }> {
     try {
-      // Claude Code stores task data in ~/.claude/tasks/ and project transcripts
-      const tasksDir = expandHome('~/.claude/tasks');
-      const projectsDir = expandHome('~/.claude/projects');
-
-      const now = Date.now();
-      const oneDayAgo = now - 24 * 60 * 60 * 1000;
-      const oneWeekAgo = now - 7 * 24 * 60 * 60 * 1000;
-      const oneMonthAgo = now - 30 * 24 * 60 * 60 * 1000;
-
-      let dailyInput = 0;
-      let dailyOutput = 0;
-      let weeklyInput = 0;
-      let weeklyOutput = 0;
-      let monthlyInput = 0;
-      let monthlyOutput = 0;
-
-      // Count conversation transcripts in projects
-      try {
-        const projectDirs = await fs.readdir(projectsDir);
-
-        for (const projectDir of projectDirs) {
-          const transcriptPath = path.join(projectsDir, projectDir);
-          const transcriptFiles = await fs.readdir(transcriptPath).catch(() => []);
-
-          for (const file of transcriptFiles) {
-            if (file.endsWith('.jsonl')) {
-              const filePath = path.join(transcriptPath, file);
-              const stats = await fs.stat(filePath);
-              const fileTime = stats.mtimeMs;
-
-              // Read and count messages
-              try {
-                const content = await fs.readFile(filePath, 'utf-8');
-                const lines = content.split('\n').filter(l => l.trim());
-
-                // Estimate: each message exchange ~1000 tokens (500 in, 500 out)
-                const messageCount = lines.length;
-                const estimatedInput = messageCount * 500;
-                const estimatedOutput = messageCount * 500;
-
-                if (fileTime > oneDayAgo) {
-                  dailyInput += estimatedInput;
-                  dailyOutput += estimatedOutput;
-                }
-                if (fileTime > oneWeekAgo) {
-                  weeklyInput += estimatedInput;
-                  weeklyOutput += estimatedOutput;
-                }
-                if (fileTime > oneMonthAgo) {
-                  monthlyInput += estimatedInput;
-                  monthlyOutput += estimatedOutput;
-                }
-              } catch {
-                // Skip file on error
-              }
-            }
-          }
-        }
-      } catch (error) {
-        // Projects directory doesn't exist or can't be read
+      // 1. 尝试读取手动配置 (优先，因为更准确)
+      const manualStats = await this.readManualConfig();
+      if (manualStats) {
+        return manualStats;
       }
 
-      // Also check tasks directory for task-based token usage
-      try {
-        const taskDirs = await fs.readdir(tasksDir);
+      // 2. 降级到 stats-cache.json
+      const todayTokens = await getTodayTokens();
+      const weekTokens = await getThisWeekTokens();
+      const monthTokens = await getThisMonthTokens();
 
-        for (const taskDir of taskDirs) {
-          const taskPath = path.join(tasksDir, taskDir);
-          const taskStat = await fs.stat(taskPath);
+      // Get full stats for accurate cost calculation
+      const stats = await parseClaudeStats();
 
-          if (taskStat.isDirectory()) {
-            const taskTime = taskStat.mtimeMs;
+      // Calculate costs with FULL pricing (including cache)
+      const todayCost = await this.calculateClaudeCostAccurate(todayTokens.totalTokens, 'daily');
+      const weekCost = await this.calculateClaudeCostAccurate(weekTokens.totalTokens, 'weekly');
+      const monthCost = await this.calculateClaudeCostAccurate(monthTokens.totalTokens, 'monthly');
 
-            // Each task represents ~2000-5000 tokens of conversation
-            const avgTaskTokens = 3000;
-            const taskInput = avgTaskTokens * 0.4; // 40% input
-            const taskOutput = avgTaskTokens * 0.6; // 60% output
+      const today: TokenUsage = {
+        agentId: agent.id,
+        agentName: agent.name,
+        inputTokens: todayTokens.inputTokens,
+        outputTokens: todayTokens.outputTokens,
+        totalTokens: todayTokens.totalTokens,
+        estimatedCost: todayCost,
+        period: 'daily',
+        timestamp: new Date()
+      };
 
-            if (taskTime > oneDayAgo) {
-              dailyInput += taskInput;
-              dailyOutput += taskOutput;
-            }
-            if (taskTime > oneWeekAgo) {
-              weeklyInput += taskInput;
-              weeklyOutput += taskOutput;
-            }
-            if (taskTime > oneMonthAgo) {
-              monthlyInput += taskInput;
-              monthlyOutput += taskOutput;
-            }
-          }
-        }
-      } catch {
-        // Tasks directory doesn't exist or can't be read
-      }
+      const thisWeek: TokenUsage = {
+        agentId: agent.id,
+        agentName: agent.name,
+        inputTokens: weekTokens.inputTokens,
+        outputTokens: weekTokens.outputTokens,
+        totalTokens: weekTokens.totalTokens,
+        estimatedCost: weekCost,
+        period: 'weekly',
+        timestamp: new Date()
+      };
 
-      const today = this.createTokenUsage(agent, Math.round(dailyInput), Math.round(dailyOutput), 'daily');
-      const thisWeek = this.createTokenUsage(agent, Math.round(weeklyInput), Math.round(weeklyOutput), 'weekly');
-      const thisMonth = this.createTokenUsage(agent, Math.round(monthlyInput), Math.round(monthlyOutput), 'monthly');
+      const thisMonth: TokenUsage = {
+        agentId: agent.id,
+        agentName: agent.name,
+        inputTokens: monthTokens.inputTokens,
+        outputTokens: monthTokens.outputTokens,
+        totalTokens: monthTokens.totalTokens,
+        estimatedCost: monthCost,
+        period: 'monthly',
+        timestamp: new Date()
+      };
 
       return { today, thisWeek, thisMonth };
     } catch (error) {
-      // Error reading Claude directories
+      console.error('Failed to read Claude stats:', error);
       return this.getEmptyTokenStats(agent);
     }
   }
 
   /**
-   * Get Cursor token statistics (from SQLite database)
+   * Calculate accurate Claude cost including cache tokens
+   */
+  private async calculateClaudeCostAccurate(totalTokens: number, period: 'daily' | 'weekly' | 'monthly'): Promise<number> {
+    try {
+      const stats = await parseClaudeStats();
+      if (!stats) return 0;
+
+      let cost = 0;
+
+      // Calculate based on model usage proportions
+      for (const [model, usage] of Object.entries(stats.modelUsage)) {
+        const modelTotal = usage.inputTokens + usage.outputTokens + usage.cacheReadInputTokens + usage.cacheCreationInputTokens;
+        if (modelTotal === 0) continue;
+
+        // Proportion of this model
+        const proportion = modelTotal / Object.values(stats.modelUsage).reduce((sum, u) =>
+          sum + u.inputTokens + u.outputTokens + u.cacheReadInputTokens + u.cacheCreationInputTokens, 0);
+
+        // Estimate token breakdown for this period
+        const periodTokens = totalTokens * proportion;
+        const inputRatio = usage.inputTokens / modelTotal;
+        const outputRatio = usage.outputTokens / modelTotal;
+        const cacheReadRatio = usage.cacheReadInputTokens / modelTotal;
+        const cacheCreateRatio = usage.cacheCreationInputTokens / modelTotal;
+
+        const periodInput = periodTokens * inputRatio;
+        const periodOutput = periodTokens * outputRatio;
+        const periodCacheRead = periodTokens * cacheReadRatio;
+        const periodCacheCreate = periodTokens * cacheCreateRatio;
+
+        // Apply correct pricing per model
+        if (model.includes('sonnet')) {
+          // Sonnet 4.6: $3/$15 per 1M, cache read $0.30, cache create $3.75
+          cost += (periodInput * 3 + periodOutput * 15 + periodCacheRead * 0.30 + periodCacheCreate * 3.75) / 1_000_000;
+        } else if (model.includes('opus')) {
+          // Opus 4.6: $15/$75 per 1M, cache read $1.50, cache create $18.75
+          cost += (periodInput * 15 + periodOutput * 75 + periodCacheRead * 1.50 + periodCacheCreate * 18.75) / 1_000_000;
+        } else if (model.includes('haiku')) {
+          // Haiku 4.5: $0.25/$1.25 per 1M, cache read $0.03, cache create $0.30
+          cost += (periodInput * 0.25 + periodOutput * 1.25 + periodCacheRead * 0.03 + periodCacheCreate * 0.30) / 1_000_000;
+        }
+      }
+
+      return cost;
+    } catch (error) {
+      // Fallback to simple estimation
+      return (totalTokens * 10) / 1_000_000; // $10 per 1M as fallback
+    }
+  }
+
+  /**
+   * Get Cursor token statistics from SQLite database
    */
   private async getCursorTokenStats(agent: Agent): Promise<{
     today: TokenUsage;
@@ -203,58 +202,69 @@ export class TokenTracker {
   }> {
     try {
       const { execSync } = require('child_process');
-      const dbPath = expandHome('~/.cursor/ai-tracking/ai-code-tracking.db');
+      const os = require('os');
+      const path = require('path');
+      const fs = require('fs');
 
-      // Check if database exists
-      try {
-        await fs.access(dbPath);
-      } catch {
+      const dbPath = path.join(os.homedir(), '.cursor', 'ai-tracking', 'ai-code-tracking.db');
+
+      // 检查数据库是否存在
+      if (!fs.existsSync(dbPath)) {
         return this.getEmptyTokenStats(agent);
       }
 
-      const now = Date.now();
-      const oneDayAgo = now - 24 * 60 * 60 * 1000;
-      const oneWeekAgo = now - 7 * 24 * 60 * 60 * 1000;
-      const oneMonthAgo = now - 30 * 24 * 60 * 60 * 1000;
+      // 查询今日数据
+      const todayQuery = `SELECT COUNT(*) as count FROM ai_code_hashes WHERE timestamp > (strftime('%s', 'now', 'start of day') * 1000)`;
+      const todayResult = execSync(`sqlite3 "${dbPath}" "${todayQuery}"`, { encoding: 'utf-8' });
+      const todayCount = parseInt(todayResult.trim() || '0');
 
-      // Query AI code generation records
-      const dailyQuery = `SELECT COUNT(*) as count FROM ai_code_hashes WHERE timestamp > ${oneDayAgo}`;
-      const weeklyQuery = `SELECT COUNT(*) as count FROM ai_code_hashes WHERE timestamp > ${oneWeekAgo}`;
-      const monthlyQuery = `SELECT COUNT(*) as count FROM ai_code_hashes WHERE timestamp > ${oneMonthAgo}`;
+      // 查询本周数据
+      const weekQuery = `SELECT COUNT(*) as count FROM ai_code_hashes WHERE timestamp > (strftime('%s', 'now', '-7 days') * 1000)`;
+      const weekResult = execSync(`sqlite3 "${dbPath}" "${weekQuery}"`, { encoding: 'utf-8' });
+      const weekCount = parseInt(weekResult.trim() || '0');
 
-      let dailyCount = 0;
-      let weeklyCount = 0;
-      let monthlyCount = 0;
+      // 查询本月数据
+      const monthQuery = `SELECT COUNT(*) as count FROM ai_code_hashes WHERE timestamp > (strftime('%s', 'now', 'start of month') * 1000)`;
+      const monthResult = execSync(`sqlite3 "${dbPath}" "${monthQuery}"`, { encoding: 'utf-8' });
+      const monthCount = parseInt(monthResult.trim() || '0');
 
-      try {
-        const dailyResult = execSync(`sqlite3 "${dbPath}" "${dailyQuery}"`, { encoding: 'utf-8' });
-        dailyCount = parseInt(dailyResult.trim(), 10) || 0;
+      // 每次代码生成约 500 tokens (200 input + 300 output)
+      const todayTokens = todayCount * 500;
+      const weekTokens = weekCount * 500;
+      const monthTokens = monthCount * 500;
 
-        const weeklyResult = execSync(`sqlite3 "${dbPath}" "${weeklyQuery}"`, { encoding: 'utf-8' });
-        weeklyCount = parseInt(weeklyResult.trim(), 10) || 0;
+      const today: TokenUsage = {
+        agentId: agent.id,
+        agentName: agent.name,
+        inputTokens: Math.round(todayTokens * 0.4),
+        outputTokens: Math.round(todayTokens * 0.6),
+        totalTokens: todayTokens,
+        estimatedCost: this.calculateCursorCost(todayTokens),
+        period: 'daily',
+        timestamp: new Date()
+      };
 
-        const monthlyResult = execSync(`sqlite3 "${dbPath}" "${monthlyQuery}"`, { encoding: 'utf-8' });
-        monthlyCount = parseInt(monthlyResult.trim(), 10) || 0;
-      } catch (error) {
-        // SQLite query failed, return empty stats
-        return this.getEmptyTokenStats(agent);
-      }
+      const thisWeek: TokenUsage = {
+        agentId: agent.id,
+        agentName: agent.name,
+        inputTokens: Math.round(weekTokens * 0.4),
+        outputTokens: Math.round(weekTokens * 0.6),
+        totalTokens: weekTokens,
+        estimatedCost: this.calculateCursorCost(weekTokens),
+        period: 'weekly',
+        timestamp: new Date()
+      };
 
-      // Estimate tokens: ~500 tokens per code generation (conservative estimate)
-      // Average code generation: 200 input (prompt) + 300 output (code)
-      const avgInputPerGen = 200;
-      const avgOutputPerGen = 300;
-
-      const dailyInput = dailyCount * avgInputPerGen;
-      const dailyOutput = dailyCount * avgOutputPerGen;
-      const weeklyInput = weeklyCount * avgInputPerGen;
-      const weeklyOutput = weeklyCount * avgOutputPerGen;
-      const monthlyInput = monthlyCount * avgInputPerGen;
-      const monthlyOutput = monthlyCount * avgOutputPerGen;
-
-      const today = this.createTokenUsage(agent, dailyInput, dailyOutput, 'daily');
-      const thisWeek = this.createTokenUsage(agent, weeklyInput, weeklyOutput, 'weekly');
-      const thisMonth = this.createTokenUsage(agent, monthlyInput, monthlyOutput, 'monthly');
+      const thisMonth: TokenUsage = {
+        agentId: agent.id,
+        agentName: agent.name,
+        inputTokens: Math.round(monthTokens * 0.4),
+        outputTokens: Math.round(monthTokens * 0.6),
+        totalTokens: monthTokens,
+        estimatedCost: this.calculateCursorCost(monthTokens),
+        period: 'monthly',
+        timestamp: new Date()
+      };
 
       return { today, thisWeek, thisMonth };
     } catch (error) {
@@ -264,112 +274,41 @@ export class TokenTracker {
   }
 
   /**
-   * Get OpenClaw token statistics
+   * Calculate Cursor cost (uses Claude Sonnet/Opus pricing)
    */
-  private async getOpenClawTokenStats(agent: Agent): Promise<{
-    today: TokenUsage;
-    thisWeek: TokenUsage;
-    thisMonth: TokenUsage;
-  }> {
-    // OpenClaw logs might be in ~/.openclaw/logs/
-    const logsDir = expandHome('~/.openclaw/logs');
+  private calculateCursorCost(totalTokens: number): number {
+    // Cursor 使用 Sonnet/Opus 混合 (假设 80% Sonnet, 20% Opus)
+    // Sonnet: Input $3/1M, Output $15/1M
+    // Opus: Input $15/1M, Output $75/1M
+    const inputTokens = totalTokens * 0.4;
+    const outputTokens = totalTokens * 0.6;
 
-    try {
-      const files = await fs.readdir(logsDir);
-      const logFiles = files.filter(f => f.includes('usage') || f.includes('token'));
+    const sonnetCost = (inputTokens * 0.8 * 3 + outputTokens * 0.8 * 15) / 1_000_000;
+    const opusCost = (inputTokens * 0.2 * 15 + outputTokens * 0.2 * 75) / 1_000_000;
 
-      let totalInput = 0;
-      let totalOutput = 0;
-
-      for (const file of logFiles) {
-        const filePath = path.join(logsDir, file);
-        try {
-          const content = await fs.readFile(filePath, 'utf-8');
-          // Parse OpenClaw log format (implementation depends on actual format)
-          const lines = content.split('\n');
-          for (const line of lines) {
-            const match = line.match(/tokens?[:\s]+(\d+)/i);
-            if (match) {
-              totalInput += parseInt(match[1], 10);
-            }
-          }
-        } catch {
-          // File read error
-        }
-      }
-
-      const today = this.createTokenUsage(agent, totalInput, totalOutput, 'daily');
-      const thisWeek = this.createTokenUsage(agent, totalInput, totalOutput, 'weekly');
-      const thisMonth = this.createTokenUsage(agent, totalInput, totalOutput, 'monthly');
-
-      return { today, thisWeek, thisMonth };
-    } catch (error) {
-      return this.getEmptyTokenStats(agent);
-    }
+    return sonnetCost + opusCost;
   }
 
   /**
-   * Create a TokenUsage object
-   */
-  private createTokenUsage(
-    agent: Agent,
-    inputTokens: number,
-    outputTokens: number,
-    period: 'daily' | 'weekly' | 'monthly'
-  ): TokenUsage {
-    const totalTokens = inputTokens + outputTokens;
-    const estimatedCost = this.calculateCost(agent.id, inputTokens, outputTokens);
-
-    return {
-      agentId: agent.id,
-      agentName: agent.name,
-      inputTokens,
-      outputTokens,
-      totalTokens,
-      estimatedCost,
-      period,
-      timestamp: new Date()
-    };
-  }
-
-  /**
-   * Get empty token stats (when no data available)
+   * Get empty token stats
    */
   private getEmptyTokenStats(agent: Agent) {
-    const empty = this.createTokenUsage(agent, 0, 0, 'daily');
+    const empty: TokenUsage = {
+      agentId: agent.id,
+      agentName: agent.name,
+      inputTokens: 0,
+      outputTokens: 0,
+      totalTokens: 0,
+      estimatedCost: 0,
+      period: 'daily',
+      timestamp: new Date()
+    };
+
     return {
       today: { ...empty, period: 'daily' as const },
       thisWeek: { ...empty, period: 'weekly' as const },
       thisMonth: { ...empty, period: 'monthly' as const }
     };
-  }
-
-  /**
-   * Calculate cost based on agent and tokens
-   */
-  private calculateCost(agentId: string, inputTokens: number, outputTokens: number): number {
-    // Pricing per 1M tokens (approximate, as of 2026)
-    const pricing: Record<string, { input: number; output: number }> = {
-      claude: {
-        input: 15,    // $15 per 1M input tokens
-        output: 75    // $75 per 1M output tokens
-      },
-      cursor: {
-        input: 10,    // Estimated
-        output: 30    // Estimated
-      },
-      openclaw: {
-        input: 0.50,  // Uses various models
-        output: 1.50
-      }
-    };
-
-    const prices = pricing[agentId] || { input: 0, output: 0 };
-
-    const inputCost = (inputTokens / 1_000_000) * prices.input;
-    const outputCost = (outputTokens / 1_000_000) * prices.output;
-
-    return inputCost + outputCost;
   }
 
   /**
@@ -395,26 +334,101 @@ export class TokenTracker {
 
     if (this.budget.daily && totalCost.today > this.budget.daily) {
       const excess = totalCost.today - this.budget.daily;
-      alerts.push(`Daily budget exceeded by $${excess.toFixed(2)} ($${totalCost.today.toFixed(2)} / $${this.budget.daily.toFixed(2)})`);
-    }
-
-    if (this.budget.weekly && totalCost.thisWeek > this.budget.weekly) {
-      const excess = totalCost.thisWeek - this.budget.weekly;
-      alerts.push(`Weekly budget exceeded by $${excess.toFixed(2)} ($${totalCost.thisWeek.toFixed(2)} / $${this.budget.weekly.toFixed(2)})`);
+      alerts.push(`Daily budget exceeded by $${excess.toFixed(2)}`);
     }
 
     if (this.budget.monthly && totalCost.thisMonth > this.budget.monthly) {
       const excess = totalCost.thisMonth - this.budget.monthly;
-      alerts.push(`Monthly budget exceeded by $${excess.toFixed(2)} ($${totalCost.thisMonth.toFixed(2)} / $${this.budget.monthly.toFixed(2)})`);
-    }
-
-    // Warning alerts (80% of budget)
-    if (this.budget.monthly && totalCost.thisMonth > this.budget.monthly * 0.8 && totalCost.thisMonth <= this.budget.monthly) {
-      const remaining = this.budget.monthly - totalCost.thisMonth;
-      alerts.push(`Monthly budget warning: $${remaining.toFixed(2)} remaining (${((totalCost.thisMonth / this.budget.monthly) * 100).toFixed(0)}% used)`);
+      alerts.push(`Monthly budget exceeded by $${excess.toFixed(2)}`);
     }
 
     return alerts;
+  }
+
+  /**
+   * Read manual configuration from ~/.agentguard/manual-stats.json
+   */
+  private async readManualConfig(): Promise<{
+    today: TokenUsage;
+    thisWeek: TokenUsage;
+    thisMonth: TokenUsage;
+  } | null> {
+    try {
+      const os = require('os');
+      const path = require('path');
+      const fs = require('fs').promises;
+
+      // 缓存5分钟，避免频繁读取文件
+      const now = Date.now();
+      if (this.manualConfigCache && (now - this.manualConfigCacheTime) < 5 * 60 * 1000) {
+        if (!this.manualConfigCache['claude-vscode']) return null;
+        return this.createTokenUsageFromManual(this.manualConfigCache['claude-vscode']);
+      }
+
+      const configPath = path.join(os.homedir(), '.agentguard', 'manual-stats.json');
+
+      try {
+        const content = await fs.readFile(configPath, 'utf-8');
+        const config = JSON.parse(content);
+        this.manualConfigCache = config;
+        this.manualConfigCacheTime = now;
+
+        if (config['claude-vscode']) {
+          return this.createTokenUsageFromManual(config['claude-vscode']);
+        }
+      } catch (err) {
+        // 文件不存在或解析失败，返回 null
+        return null;
+      }
+
+      return null;
+    } catch (error) {
+      return null;
+    }
+  }
+
+  /**
+   * Create TokenUsage from manual configuration
+   */
+  private createTokenUsageFromManual(config: any): {
+    today: TokenUsage;
+    thisWeek: TokenUsage;
+    thisMonth: TokenUsage;
+  } {
+    const today: TokenUsage = {
+      agentId: 'claude',
+      agentName: 'Claude Code (VS Code)',
+      inputTokens: 0,
+      outputTokens: 0,
+      totalTokens: 0,
+      estimatedCost: config.today || 0,
+      period: 'daily',
+      timestamp: new Date()
+    };
+
+    const thisWeek: TokenUsage = {
+      agentId: 'claude',
+      agentName: 'Claude Code (VS Code)',
+      inputTokens: 0,
+      outputTokens: 0,
+      totalTokens: 0,
+      estimatedCost: config.thisMonth || 0, // 周用月数据估算
+      period: 'weekly',
+      timestamp: new Date()
+    };
+
+    const thisMonth: TokenUsage = {
+      agentId: 'claude',
+      agentName: 'Claude Code (VS Code)',
+      inputTokens: 0,
+      outputTokens: 0,
+      totalTokens: 0,
+      estimatedCost: config.thisMonth || 0,
+      period: 'monthly',
+      timestamp: new Date()
+    };
+
+    return { today, thisWeek, thisMonth };
   }
 
   /**

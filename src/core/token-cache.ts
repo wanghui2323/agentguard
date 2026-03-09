@@ -103,9 +103,9 @@ export class TokenCache {
       `;
 
       const result = execSync(`sqlite3 "${this.dbPath}" "${query}"`, { encoding: 'utf-8' });
-      const lines = result.trim().split('\n').filter(l => l);
+      const lines = result.trim().split('\n').filter((l: string) => l);
 
-      return lines.map(line => {
+      return lines.map((line: string) => {
         const [date, input, output, total, cost] = line.split('|');
         return {
           date,
@@ -222,7 +222,7 @@ export class TokenCache {
       const [count, oldest, newest] = statsResult.trim().split('|');
 
       const agentsResult = execSync(`sqlite3 "${this.dbPath}" "${agentsQuery}"`, { encoding: 'utf-8' });
-      const agents = agentsResult.trim().split('\n').filter(a => a);
+      const agents = agentsResult.trim().split('\n').filter((a: string) => a);
 
       return {
         totalRecords: parseInt(count, 10) || 0,

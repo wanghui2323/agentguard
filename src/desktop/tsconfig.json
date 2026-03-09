@@ -1,0 +1,15 @@
+{
+  "extends": "../../tsconfig.json",
+  "compilerOptions": {
+    "outDir": "../../dist/desktop",
+    "rootDir": "..",
+    "types": ["node"]
+  },
+  "include": [
+    "../desktop/**/*.ts",
+    "../core/**/*.ts",
+    "../utils/**/*.ts",
+    "../types/**/*.ts"
+  ],
+  "exclude": ["node_modules", "dist"]
+}
