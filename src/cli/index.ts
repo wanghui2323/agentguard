@@ -10,6 +10,7 @@ import { SecurityScanner } from '../core/scanner';
 import { AutoFixer } from '../core/fixer';
 import { TokenTracker } from '../core/token-tracker';
 import { ReportExporter } from '../core/report-exporter';
+import { registerOpenClawCommands } from './commands/openclaw';
 import type { SecurityScanResult, TokenReport } from '../types';
 
 const program = new Command();
@@ -17,7 +18,7 @@ const program = new Command();
 program
   .name('agentguard')
   .description('Security control center for local AI agents')
-  .version('0.3.0');
+  .version('0.4.0');
 
 /**
  * Scan command
@@ -495,5 +496,8 @@ function formatTokens(usage: any): string {
   }
   return `${total} tokens`;
 }
+
+// Register OpenClaw management commands
+registerOpenClawCommands(program);
 
 program.parse();
