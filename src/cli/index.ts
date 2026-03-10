@@ -504,4 +504,8 @@ registerOpenClawCommands(program);
 import { registerHistoryCommands } from './commands/history';
 registerHistoryCommands(program);
 
+// Register optimization commands
+import { registerOptimizeCommands } from './commands/optimize';
+registerOptimizeCommands(program);
+
 program.parse();
