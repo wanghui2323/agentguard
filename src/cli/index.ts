@@ -500,4 +500,8 @@ function formatTokens(usage: any): string {
 // Register OpenClaw management commands
 registerOpenClawCommands(program);
 
+// Register history commands
+import { registerHistoryCommands } from './commands/history';
+registerHistoryCommands(program);
+
 program.parse();

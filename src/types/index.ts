@@ -11,6 +11,7 @@ export interface Agent {
   configPath?: string;
   port?: number;
   detectedAt: Date;
+  tokenUsage?: TokenUsage;
 }
 
 export type SeverityLevel = 'critical' | 'high' | 'medium' | 'low' | 'info';
@@ -64,8 +65,11 @@ export interface TokenUsage {
   agentName: string;
   inputTokens: number;
   outputTokens: number;
+  cacheCreationInputTokens?: number;
+  cacheReadInputTokens?: number;
   totalTokens: number;
   estimatedCost: number;
+  requestCount?: number;
   period: 'daily' | 'weekly' | 'monthly';
   timestamp: Date;
 }
