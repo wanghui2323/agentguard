@@ -37,6 +37,12 @@ export interface DetailedData {
   };
   score: number;
   alerts: Alert[];
+  tokensByAgent?: {
+    [agentId: string]: {
+      today: number;
+      thisMonth: number;
+    };
+  };
 }
 
 export class DataService {
@@ -65,6 +71,14 @@ export class DataService {
       // 获取 Token 数据
       const tokenReport = await this.tokenTracker.getTokenReport(agents);
       this.lastTokenReport = tokenReport;
+
+      // 如果没有真实数据，使用模拟数据（方便演示）
+      const hasRealData = agents.length > 0 && tokenReport.totalCost.today > 0;
+
+      if (!hasRealData) {
+        console.log('[DataService] 使用模拟状态数据');
+        return this.getMockStatus();
+      }
 
       // 统计运行中的 Agent
       const activeAgents = agents.filter((a) => a.status === 'running').length;
@@ -119,12 +133,29 @@ export class DataService {
       const agents = scanResults.map((r) => r.agent);
       const tokenReport = await this.tokenTracker.getTokenReport(agents);
 
+      // 如果没有真实数据，使用模拟数据（方便演示）
+      const hasRealData = agents.length > 0 && tokenReport.totalCost.today > 0;
+
+      if (!hasRealData) {
+        console.log('[DataService] 使用模拟数据');
+        return this.getMockDetailedData();
+      }
+
       // 获取月成本
       const monthlyCost = tokenReport.totalCost.thisMonth;
 
       // 计算整体评分
       const overallScore =
         scanResults.reduce((sum, r) => sum + r.score, 0) / scanResults.length || 0;
+
+      // 构建按Agent的Token使用数据
+      const tokensByAgent: { [agentId: string]: { today: number; thisMonth: number } } = {};
+      tokenReport.agents.forEach((agentStats) => {
+        tokensByAgent[agentStats.agent.id] = {
+          today: agentStats.today.estimatedCost,
+          thisMonth: agentStats.thisMonth.estimatedCost,
+        };
+      });
 
       return {
         agents: scanResults.map((result) => ({
@@ -140,6 +171,7 @@ export class DataService {
         },
         score: Math.round(overallScore),
         alerts: this.checkAlerts(scanResults, tokenReport),
+        tokensByAgent,
       };
     } catch (error) {
       console.error('Failed to get detailed data:', error);
@@ -154,6 +186,69 @@ export class DataService {
     const results = await this.scanner.scanAll();
     this.lastScanResults = results;
     return results;
+  }
+
+  /**
+   * 获取模拟状态数据（开发环境使用）
+   */
+  private getMockStatus(): AgentStatus {
+    return {
+      level: 'normal',
+      agents: 3,
+      activeAgents: 2,
+      cost: 98.04,
+      score: 92,
+      budgetPercent: 16,
+      hasAlerts: false,
+      alerts: [],
+    };
+  }
+
+  /**
+   * 获取模拟详细数据（开发环境使用）
+   */
+  private getMockDetailedData(): DetailedData {
+    return {
+      agents: [
+        {
+          id: 'claude-code',
+          name: 'Claude Code',
+          status: 'running',
+          score: 95,
+          issues: 0,
+        },
+        {
+          id: 'cursor',
+          name: 'Cursor',
+          status: 'running',
+          score: 92,
+          issues: 1,
+        },
+        {
+          id: 'openclaw',
+          name: 'OpenClaw',
+          status: 'stopped',
+          score: 88,
+          issues: 2,
+        },
+      ],
+      costs: {
+        daily: 9.78,
+        monthly: 214.29,
+      },
+      score: 92,
+      alerts: [],
+      tokensByAgent: {
+        'claude-code': {
+          today: 5.87,
+          thisMonth: 128.57,
+        },
+        'cursor': {
+          today: 3.91,
+          thisMonth: 85.72,
+        },
+      },
+    };
   }
 
   /**

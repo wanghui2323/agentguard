@@ -13,19 +13,20 @@
 
     body {
       width: 320px;
+      min-height: 100vh;
       font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
       background: linear-gradient(135deg, #2d3748 0%, #1a202c 100%);
       color: #e2e8f0;
       overflow: hidden;
-      transition: height 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+      transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
     }
 
     body.compact {
-      height: 280px;
+      max-height: 360px;
     }
 
     body.expanded {
-      height: 520px;
+      max-height: 600px;
     }
 
     /* 头部 */
@@ -86,7 +87,15 @@
     .panel-content {
       padding: 16px 18px;
       overflow-y: auto;
-      height: calc(100% - 57px);
+      max-height: calc(100vh - 57px);
+    }
+
+    body.compact .panel-content {
+      overflow-y: hidden;
+    }
+
+    body.expanded .panel-content {
+      overflow-y: auto;
     }
 
     .panel-content::-webkit-scrollbar {
@@ -102,7 +111,7 @@
       border-radius: 3px;
     }
 
-    /* 简易模式 - 关键信息卡片 */
+    /* P0: 关键指标卡片 (2x2) */
     .quick-stats {
       display: grid;
       grid-template-columns: 1fr 1fr;
@@ -129,10 +138,42 @@
       margin-bottom: 6px;
       text-transform: uppercase;
       letter-spacing: 0.5px;
+      display: flex;
+      align-items: center;
+      gap: 6px;
+    }
+
+    /* SVG 图标通用样式 */
+    .icon {
+      width: 14px;
+      height: 14px;
+      stroke-width: 2;
+      flex-shrink: 0;
+    }
+
+    .icon-lg {
+      width: 16px;
+      height: 16px;
+    }
+
+    .icon-primary {
+      stroke: #60a5fa;
+    }
+
+    .icon-success {
+      stroke: #6ee7b7;
+    }
+
+    .icon-warning {
+      stroke: #fbbf24;
+    }
+
+    .icon-danger {
+      stroke: #f87171;
     }
 
     .stat-value {
-      font-size: 22px;
+      font-size: 24px;
       font-weight: 700;
       color: #f7fafc;
       display: flex;
@@ -146,60 +187,171 @@
       color: #94a3b8;
     }
 
-    .stat-value .trend {
-      font-size: 12px;
-      margin-left: 6px;
-    }
-
-    .trend.up {
-      color: #fbbf24;
-    }
-
-    .trend.down {
+    .stat-value.score-good {
       color: #6ee7b7;
     }
 
-    /* Agent 状态摘要 */
-    .agents-summary {
+    .stat-value.score-warn {
+      color: #fbbf24;
+    }
+
+    .stat-value.score-danger {
+      color: #fca5a5;
+    }
+
+    /* P1: Agent 极简状态行 */
+    .agents-mini {
       background: rgba(0, 0, 0, 0.25);
       border: 1px solid rgba(255, 255, 255, 0.08);
       border-radius: 10px;
-      padding: 14px;
+      padding: 12px 14px;
       margin-bottom: 14px;
-    }
-
-    .summary-row {
       display: flex;
+      align-items: center;
       justify-content: space-between;
-      align-items: center;
-      padding: 8px 0;
-      font-size: 13px;
     }
 
-    .summary-row:not(:last-child) {
-      border-bottom: 1px solid rgba(255, 255, 255, 0.05);
-    }
-
-    .agent-name-mini {
+    .agents-dots {
       display: flex;
-      align-items: center;
       gap: 8px;
-      color: #cbd5e0;
+      align-items: center;
     }
 
-    .status-dot {
-      width: 8px;
-      height: 8px;
+    .agent-dot {
+      width: 10px;
+      height: 10px;
       border-radius: 50%;
+      cursor: pointer;
+      transition: all 0.2s;
     }
 
-    .status-dot.running {
+    .agent-dot.running {
       background: #6ee7b7;
       box-shadow: 0 0 8px rgba(110, 231, 183, 0.5);
     }
 
-    .status-dot.stopped {
+    .agent-dot.stopped {
       background: #64748b;
+    }
+
+    .agent-dot:hover {
+      transform: scale(1.3);
+    }
+
+    .agents-summary {
+      font-size: 12px;
+      color: #94a3b8;
+    }
+
+    /* P0: 严重告警（高优先级显示）*/
+    .alert-box {
+      background: rgba(239, 68, 68, 0.12);
+      border: 1px solid rgba(239, 68, 68, 0.3);
+      border-radius: 10px;
+      padding: 12px 14px;
+      font-size: 13px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      margin-bottom: 14px;
+      cursor: pointer;
+      transition: all 0.2s;
+    }
+
+    .alert-box:hover {
+      background: rgba(239, 68, 68, 0.18);
+      border-color: rgba(239, 68, 68, 0.4);
+    }
+
+    .alert-box.warning {
+      background: rgba(251, 191, 36, 0.12);
+      border-color: rgba(251, 191, 36, 0.3);
+    }
+
+    .alert-box.warning:hover {
+      background: rgba(251, 191, 36, 0.18);
+      border-color: rgba(251, 191, 36, 0.4);
+    }
+
+    .alert-left {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+
+    .alert-icon {
+      width: 20px;
+      height: 20px;
+      flex-shrink: 0;
+    }
+
+    .alert-text {
+      color: #f7fafc;
+      font-weight: 500;
+    }
+
+    .alert-action {
+      background: rgba(255, 255, 255, 0.1);
+      border: 1px solid rgba(255, 255, 255, 0.15);
+      padding: 6px 12px;
+      border-radius: 6px;
+      font-size: 11px;
+      color: #f7fafc;
+      cursor: pointer;
+      transition: all 0.2s;
+      font-weight: 500;
+    }
+
+    .alert-action:hover {
+      background: rgba(255, 255, 255, 0.2);
+    }
+
+    /* P0: 快速操作按钮（前置）*/
+    .quick-actions {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 10px;
+      margin-bottom: 14px;
+    }
+
+    .action-btn {
+      background: rgba(255, 255, 255, 0.08);
+      border: 1px solid rgba(255, 255, 255, 0.1);
+      padding: 12px 14px;
+      border-radius: 8px;
+      color: #cbd5e0;
+      font-size: 13px;
+      cursor: pointer;
+      transition: all 0.2s;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 6px;
+      font-weight: 500;
+    }
+
+    .action-btn:hover {
+      background: rgba(255, 255, 255, 0.15);
+      border-color: rgba(255, 255, 255, 0.2);
+      color: #f7fafc;
+      transform: translateY(-1px);
+      box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
+    }
+
+    .action-btn:active {
+      transform: translateY(0);
+    }
+
+    .action-btn.primary {
+      background: rgba(99, 102, 241, 0.15);
+      border-color: rgba(99, 102, 241, 0.3);
+      color: #a5b4fc;
+    }
+
+    .action-btn.primary:hover {
+      background: rgba(99, 102, 241, 0.25);
+      border-color: rgba(99, 102, 241, 0.4);
+      color: #c7d2fe;
     }
 
     /* 展开/收起按钮 */
@@ -218,7 +370,7 @@
       justify-content: center;
       gap: 8px;
       font-weight: 500;
-      margin-bottom: 14px;
+      margin-bottom: 0;
     }
 
     .expand-btn:hover {
@@ -236,15 +388,20 @@
       transform: rotate(180deg);
     }
 
-    /* 详细信息区域 */
+    /* 详细信息区域（可折叠）*/
     .details-section {
       max-height: 0;
       overflow: hidden;
-      transition: max-height 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+      opacity: 0;
+      transition: max-height 0.4s cubic-bezier(0.4, 0, 0.2, 1), opacity 0.3s ease;
+      margin-top: 0;
     }
 
     body.expanded .details-section {
-      max-height: 300px;
+      max-height: 2000px;
+      overflow: visible;
+      opacity: 1;
+      margin-top: 14px;
     }
 
     .section {
@@ -290,108 +447,55 @@
       font-weight: 600;
     }
 
-    /* 告警信息 */
-    .alert-box {
-      background: rgba(251, 191, 36, 0.12);
-      border: 1px solid rgba(251, 191, 36, 0.3);
+    /* 安全问题列表 */
+    .issues-list {
+      background: rgba(0, 0, 0, 0.25);
+      border: 1px solid rgba(255, 255, 255, 0.08);
       border-radius: 10px;
       padding: 12px;
-      font-size: 12px;
+    }
+
+    .issue-item {
       display: flex;
       align-items: flex-start;
       gap: 10px;
-      margin-bottom: 14px;
-    }
-
-    .alert-box.critical {
-      background: rgba(239, 68, 68, 0.12);
-      border-color: rgba(239, 68, 68, 0.3);
-    }
-
-    .alert-icon {
-      font-size: 16px;
-      flex-shrink: 0;
-    }
-
-    .alert-content {
-      flex: 1;
-    }
-
-    .alert-title {
-      font-weight: 600;
-      color: #fbbf24;
-      margin-bottom: 4px;
-    }
-
-    .alert-box.critical .alert-title {
-      color: #fca5a5;
-    }
-
-    .alert-message {
+      padding: 8px 0;
+      font-size: 13px;
       color: #cbd5e0;
       line-height: 1.5;
     }
 
-    /* 快速操作按钮 */
-    .quick-actions {
-      display: grid;
-      grid-template-columns: 1fr 1fr;
-      gap: 10px;
+    .issue-item:not(:last-child) {
+      border-bottom: 1px solid rgba(255, 255, 255, 0.05);
     }
 
-    .action-btn {
-      background: rgba(255, 255, 255, 0.08);
-      border: 1px solid rgba(255, 255, 255, 0.1);
-      padding: 11px 14px;
-      border-radius: 8px;
-      color: #cbd5e0;
-      font-size: 12px;
-      cursor: pointer;
-      transition: all 0.2s;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      gap: 6px;
-      font-weight: 500;
+    .issue-icon {
+      flex-shrink: 0;
+      font-size: 14px;
     }
 
-    .action-btn:hover {
-      background: rgba(255, 255, 255, 0.15);
-      border-color: rgba(255, 255, 255, 0.2);
-      color: #f7fafc;
-      transform: translateY(-1px);
+    .issue-icon.critical {
+      color: #fca5a5;
     }
 
-    .action-btn:active {
-      transform: translateY(0);
+    .issue-icon.warning {
+      color: #fbbf24;
     }
 
-    .action-btn.primary {
-      background: rgba(99, 102, 241, 0.15);
-      border-color: rgba(99, 102, 241, 0.3);
-      color: #a5b4fc;
+    /* 滑入动画 */
+    @keyframes slideIn {
+      from {
+        opacity: 0;
+        transform: translateY(-10px);
+      }
+      to {
+        opacity: 1;
+        transform: translateY(0);
+      }
     }
 
-    .action-btn.primary:hover {
-      background: rgba(99, 102, 241, 0.25);
-      border-color: rgba(99, 102, 241, 0.4);
-      color: #c7d2fe;
-    }
-
-    /* 加载状态 */
-    .loading {
-      opacity: 0.5;
-      pointer-events: none;
-    }
-
-    /* 动画 */
-    @keyframes fadeIn {
-      from { opacity: 0; transform: translateY(-10px); }
-      to { opacity: 1; transform: translateY(0); }
-    }
-
-    .stat-card, .agents-summary, .alert-box {
-      animation: fadeIn 0.3s ease-out forwards;
+    .stat-card, .agents-mini, .alert-box, .action-btn {
+      animation: slideIn 0.3s ease-out forwards;
     }
 
     .stat-card:nth-child(1) { animation-delay: 0.05s; }
@@ -415,74 +519,111 @@
 
   <!-- 内容区 -->
   <div class="panel-content">
-    <!-- 简易模式 - 关键指标 -->
+    <!-- P0: 关键指标 (2x2) -->
     <div class="quick-stats">
       <div class="stat-card">
-        <div class="stat-label">💰 今日消耗</div>
+        <div class="stat-label">
+          <svg class="icon icon-warning" viewBox="0 0 24 24" fill="none" stroke="currentColor">
+            <circle cx="12" cy="12" r="10"/>
+            <path d="M12 6v6l4 2"/>
+          </svg>
+          今日消耗
+        </div>
         <div class="stat-value">
           <span id="cost-today">$0</span>
         </div>
       </div>
       <div class="stat-card">
-        <div class="stat-label">📊 本月消耗</div>
+        <div class="stat-label">
+          <svg class="icon icon-primary" viewBox="0 0 24 24" fill="none" stroke="currentColor">
+            <path d="M3 3v18h18"/>
+            <path d="M18 17l-4-4-4 4-4-4"/>
+          </svg>
+          本月消耗
+        </div>
         <div class="stat-value">
           <span id="cost-month">$0</span>
         </div>
       </div>
       <div class="stat-card">
-        <div class="stat-label">🤖 活跃Agent</div>
+        <div class="stat-label">
+          <svg class="icon icon-success" viewBox="0 0 24 24" fill="none" stroke="currentColor">
+            <rect x="3" y="3" width="18" height="18" rx="2"/>
+            <circle cx="9" cy="9" r="1" fill="currentColor"/>
+            <circle cx="15" cy="9" r="1" fill="currentColor"/>
+            <path d="M9 15c0-1.5 1.5-3 3-3s3 1.5 3 3"/>
+          </svg>
+          AGENT
+        </div>
         <div class="stat-value">
           <span id="agent-count">0/0</span>
         </div>
       </div>
       <div class="stat-card">
-        <div class="stat-label">🛡️ 安全评分</div>
-        <div class="stat-value">
+        <div class="stat-label">
+          <svg class="icon icon-success" viewBox="0 0 24 24" fill="none" stroke="currentColor">
+            <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/>
+          </svg>
+          安全评分
+        </div>
+        <div class="stat-value" id="score-value">
           <span id="score">--</span>
           <span class="unit">/100</span>
         </div>
       </div>
     </div>
 
-    <!-- Agent 状态摘要 -->
-    <div class="agents-summary" id="agents-summary">
-      <div class="summary-row">
-        <div class="agent-name-mini">
-          <span class="status-dot running"></span>
-          <span>Claude Code</span>
-        </div>
-        <span style="color: #6ee7b7; font-size: 12px;">运行中</span>
+    <!-- P1: Agent 极简状态 -->
+    <div class="agents-mini">
+      <div class="agents-dots" id="agents-dots">
+        <div class="agent-dot running" title="Claude Code"></div>
+        <div class="agent-dot running" title="Cursor"></div>
+        <div class="agent-dot stopped" title="OpenClaw"></div>
       </div>
-      <div class="summary-row">
-        <div class="agent-name-mini">
-          <span class="status-dot running"></span>
-          <span>Cursor IDE</span>
-        </div>
-        <span style="color: #6ee7b7; font-size: 12px;">运行中</span>
-      </div>
-      <div class="summary-row">
-        <div class="agent-name-mini">
-          <span class="status-dot stopped"></span>
-          <span>OpenClaw</span>
-        </div>
-        <span style="color: #64748b; font-size: 12px;">已停止</span>
+      <div class="agents-summary" id="agents-summary">
+        2/3 运行中
       </div>
     </div>
 
-    <!-- 告警（如果有）-->
+    <!-- P0: 严重告警（如有）-->
     <div id="alert-container"></div>
+
+    <!-- P0: 快速操作（前置到简洁模式）-->
+    <div class="quick-actions">
+      <button class="action-btn primary" id="btn-dashboard">
+        <svg class="icon-lg" viewBox="0 0 24 24" fill="none" stroke="currentColor">
+          <rect x="3" y="3" width="7" height="7"/>
+          <rect x="14" y="3" width="7" height="7"/>
+          <rect x="14" y="14" width="7" height="7"/>
+          <rect x="3" y="14" width="7" height="7"/>
+        </svg>
+        Dashboard
+      </button>
+      <button class="action-btn" id="btn-scan">
+        <svg class="icon-lg" viewBox="0 0 24 24" fill="none" stroke="currentColor">
+          <circle cx="11" cy="11" r="8"/>
+          <path d="m21 21-4.35-4.35"/>
+        </svg>
+        扫描
+      </button>
+    </div>
 
     <!-- 展开按钮 -->
     <button class="expand-btn" id="expand-btn">
-      <span id="expand-text">查看详细信息</span>
+      <span id="expand-text">查看 Token 详情</span>
       <span class="expand-icon">▼</span>
     </button>
 
-    <!-- 详细信息区域（默认隐藏）-->
+    <!-- P2: 详细信息区域（默认隐藏）-->
     <div class="details-section">
       <!-- Token 详细统计 -->
       <div class="section">
-        <div class="section-title">💎 Token 详情</div>
+        <div class="section-title">
+          <svg class="icon icon-primary" viewBox="0 0 24 24" fill="none" stroke="currentColor">
+            <path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z"/>
+          </svg>
+          TOKEN 使用详情
+        </div>
         <div class="token-details" id="token-details">
           <div class="token-row">
             <span class="token-label">Claude Code (今日)</span>
@@ -503,16 +644,18 @@
         </div>
       </div>
 
-      <!-- 快速操作 -->
-      <div class="section">
-        <div class="section-title">⚡ 快速操作</div>
-        <div class="quick-actions">
-          <button class="action-btn primary" id="btn-dashboard">
-            🌐 Dashboard
-          </button>
-          <button class="action-btn" id="btn-scan">
-            🔍 扫描
-          </button>
+      <!-- 安全问题详情 -->
+      <div class="section" id="issues-section">
+        <div class="section-title">
+          <svg class="icon icon-danger" viewBox="0 0 24 24" fill="none" stroke="currentColor">
+            <path d="M10.29 3.86L1.82 18a2 2 0 001.71 3h16.94a2 2 0 001.71-3L13.71 3.86a2 2 0 00-3.42 0z"/>
+            <line x1="12" y1="9" x2="12" y2="13"/>
+            <line x1="12" y1="17" x2="12.01" y2="17"/>
+          </svg>
+          安全问题
+        </div>
+        <div class="issues-list" id="issues-list">
+          <!-- 动态填充 -->
         </div>
       </div>
     </div>
@@ -528,7 +671,11 @@
     document.getElementById('expand-btn').addEventListener('click', () => {
       isExpanded = !isExpanded;
       document.body.className = isExpanded ? 'expanded' : 'compact';
-      document.getElementById('expand-text').textContent = isExpanded ? '收起详细信息' : '查看详细信息';
+      document.getElementById('expand-text').textContent = isExpanded ? '收起详细信息' : '查看 Token 详情';
+
+      // 通知主进程调整窗口高度
+      const targetHeight = isExpanded ? 600 : 420;
+      ipcRenderer.send('resize-panel', { height: targetHeight });
     });
 
     // 刷新数据
@@ -536,7 +683,7 @@
       const btn = document.getElementById('btn-refresh');
       btn.style.opacity = '0.5';
       btn.style.pointerEvents = 'none';
-      
+
       try {
         const data = await ipcRenderer.invoke('get-detailed-data');
         updateUI(data);
@@ -574,18 +721,35 @@
 
     // 更新界面
     function updateUI(data) {
-      if (!data) return;
+      console.log('[UpdateUI] 开始更新界面，数据:', data);
+      if (!data) {
+        console.warn('[UpdateUI] 数据为空！');
+        return;
+      }
 
-      // 更新关键指标
-      document.getElementById('cost-today').textContent = `$${data.costs?.daily?.toFixed(2) || '0.00'}`;
-      document.getElementById('cost-month').textContent = `$${data.costs?.monthly?.toFixed(2) || '0.00'}`;
-      
+      // P0: 更新关键指标
+      const dailyCost = data.costs?.daily?.toFixed(2) || '0.00';
+      const monthlyCost = data.costs?.monthly?.toFixed(2) || '0.00';
+      console.log('[UpdateUI] 今日消耗:', dailyCost, '本月消耗:', monthlyCost);
+
+      document.getElementById('cost-today').textContent = `$${dailyCost}`;
+      document.getElementById('cost-month').textContent = `$${monthlyCost}`;
+
       const activeCount = data.agents?.filter(a => a.status === 'running').length || 0;
       const totalCount = data.agents?.length || 0;
       document.getElementById('agent-count').textContent = `${activeCount}/${totalCount}`;
-      document.getElementById('score').textContent = data.score || '--';
 
-      // 更新状态徽章
+      const score = data.score || 0;
+      const scoreElement = document.getElementById('score-value');
+      document.getElementById('score').textContent = score || '--';
+
+      // 安全评分颜色
+      scoreElement.className = 'stat-value';
+      if (score >= 80) scoreElement.classList.add('score-good');
+      else if (score >= 50) scoreElement.classList.add('score-warn');
+      else if (score > 0) scoreElement.classList.add('score-danger');
+
+      // P0: 更新状态徽章
       const badge = document.getElementById('status-badge');
       if (activeCount === 0) {
         badge.textContent = '离线';
@@ -601,52 +765,101 @@
         badge.style.color = '#6ee7b7';
       }
 
-      // 更新 Agent 列表
-      const summary = document.getElementById('agents-summary');
-      summary.innerHTML = '';
+      // P1: 更新 Agent 极简状态
+      const dotsContainer = document.getElementById('agents-dots');
+      dotsContainer.innerHTML = '';
       data.agents?.forEach(agent => {
-        const row = document.createElement('div');
-        row.className = 'summary-row';
-        const isRunning = agent.status === 'running';
-        row.innerHTML = `
-          <div class="agent-name-mini">
-            <span class="status-dot ${isRunning ? 'running' : 'stopped'}"></span>
-            <span>${agent.name}</span>
-          </div>
-          <span style="color: ${isRunning ? '#6ee7b7' : '#64748b'}; font-size: 12px;">
-            ${isRunning ? '运行中' : '已停止'}
-          </span>
-        `;
-        summary.appendChild(row);
+        const dot = document.createElement('div');
+        dot.className = `agent-dot ${agent.status === 'running' ? 'running' : 'stopped'}`;
+        dot.title = agent.name;
+        dotsContainer.appendChild(dot);
       });
+      document.getElementById('agents-summary').textContent = `${activeCount}/${totalCount} 运行中`;
 
-      // 更新 Token 详情
-      if (data.tokens) {
-        // 这里需要根据实际数据结构调整
+      // P0: 更新严重告警
+      const alertContainer = document.getElementById('alert-container');
+      alertContainer.innerHTML = '';
+
+      const criticalAlerts = data.alerts?.filter(a => a.level === 'critical') || [];
+      const warningAlerts = data.alerts?.filter(a => a.level === 'warning') || [];
+
+      if (criticalAlerts.length > 0) {
+        const alertBox = document.createElement('div');
+        alertBox.className = 'alert-box';
+        alertBox.innerHTML = `
+          <div class="alert-left">
+            <svg class="alert-icon" viewBox="0 0 24 24" fill="none" stroke="#ef4444" stroke-width="2">
+              <circle cx="12" cy="12" r="10"/>
+              <line x1="12" y1="8" x2="12" y2="12"/>
+              <line x1="12" y1="16" x2="12.01" y2="16"/>
+            </svg>
+            <span class="alert-text">发现 ${criticalAlerts.length} 个严重问题</span>
+          </div>
+          <button class="alert-action">查看</button>
+        `;
+        alertBox.querySelector('.alert-action').addEventListener('click', () => {
+          if (!isExpanded) {
+            document.getElementById('expand-btn').click();
+          }
+        });
+        alertContainer.appendChild(alertBox);
+      } else if (warningAlerts.length > 0) {
+        const alertBox = document.createElement('div');
+        alertBox.className = 'alert-box warning';
+        alertBox.innerHTML = `
+          <div class="alert-left">
+            <svg class="alert-icon" viewBox="0 0 24 24" fill="none" stroke="#fbbf24" stroke-width="2">
+              <path d="M10.29 3.86L1.82 18a2 2 0 001.71 3h16.94a2 2 0 001.71-3L13.71 3.86a2 2 0 00-3.42 0z"/>
+              <line x1="12" y1="9" x2="12" y2="13"/>
+              <line x1="12" y1="17" x2="12.01" y2="17"/>
+            </svg>
+            <span class="alert-text">发现 ${warningAlerts.length} 个警告</span>
+          </div>
+          <button class="alert-action">查看</button>
+        `;
+        alertBox.querySelector('.alert-action').addEventListener('click', () => {
+          if (!isExpanded) {
+            document.getElementById('expand-btn').click();
+          }
+        });
+        alertContainer.appendChild(alertBox);
+      }
+
+      // P2: 更新 Token 详情
+      if (data.tokensByAgent) {
+        const claudeData = data.tokensByAgent['claude-code'] || { today: 0, thisMonth: 0 };
+        const cursorData = data.tokensByAgent['cursor'] || { today: 0, thisMonth: 0 };
+
+        document.getElementById('claude-today').textContent = `$${claudeData.today.toFixed(2)}`;
+        document.getElementById('cursor-today').textContent = `$${cursorData.today.toFixed(2)}`;
+        document.getElementById('claude-month').textContent = `$${claudeData.thisMonth.toFixed(2)}`;
+        document.getElementById('cursor-month').textContent = `$${cursorData.thisMonth.toFixed(2)}`;
+      } else {
+        // 降级方案：按比例分配
         document.getElementById('claude-today').textContent = `$${(data.costs?.daily * 0.6 || 0).toFixed(2)}`;
         document.getElementById('cursor-today').textContent = `$${(data.costs?.daily * 0.4 || 0).toFixed(2)}`;
         document.getElementById('claude-month').textContent = `$${(data.costs?.monthly * 0.6 || 0).toFixed(2)}`;
         document.getElementById('cursor-month').textContent = `$${(data.costs?.monthly * 0.4 || 0).toFixed(2)}`;
       }
 
-      // 更新告警
-      const alertContainer = document.getElementById('alert-container');
-      alertContainer.innerHTML = '';
-      if (data.alerts && data.alerts.length > 0) {
-        data.alerts.forEach(alert => {
-          if (alert.level !== 'info') {
-            const alertBox = document.createElement('div');
-            alertBox.className = `alert-box ${alert.level === 'critical' ? 'critical' : ''}`;
-            alertBox.innerHTML = `
-              <span class="alert-icon">${alert.level === 'critical' ? '🚨' : '⚠️'}</span>
-              <div class="alert-content">
-                <div class="alert-title">${alert.level === 'critical' ? '严重告警' : '警告'}</div>
-                <div class="alert-message">${alert.message}</div>
-              </div>
-            `;
-            alertContainer.appendChild(alertBox);
-          }
+      // P2: 更新安全问题列表
+      const issuesList = document.getElementById('issues-list');
+      issuesList.innerHTML = '';
+
+      const allIssues = [...criticalAlerts, ...warningAlerts];
+      if (allIssues.length > 0) {
+        allIssues.forEach(issue => {
+          const item = document.createElement('div');
+          item.className = 'issue-item';
+          item.innerHTML = `
+            <span class="issue-icon ${issue.level}">${issue.level === 'critical' ? '🔴' : '🟡'}</span>
+            <span>${issue.message}</span>
+          `;
+          issuesList.appendChild(item);
         });
+        document.getElementById('issues-section').style.display = 'block';
+      } else {
+        document.getElementById('issues-section').style.display = 'none';
       }
 
       currentData = data;
@@ -660,10 +873,12 @@
     // 初始加载
     (async () => {
       try {
+        console.log('[Panel] 正在获取数据...');
         const data = await ipcRenderer.invoke('get-detailed-data');
+        console.log('[Panel] 收到数据:', data);
         updateUI(data);
       } catch (error) {
-        console.error('Failed to load initial data:', error);
+        console.error('[Panel] 加载数据失败:', error);
       }
     })();
   </script>
