@@ -1,0 +1,267 @@
+/**
+ * Token Usage Tracker (Fixed with REAL Claude data)
+ */
+import type {
+  Agent,
+  TokenUsage,
+  TokenStats,
+  TokenReport,
+  CostBudget
+} from '../types';
+import { getTodayTokens, getThisWeekTokens, getThisMonthTokens, parseClaudeStats } from './claude-stats-parser';
+
+export class TokenTracker {
+  private budget: CostBudget = {};
+
+  /**
+   * Get token statistics for all agents
+   */
+  async getTokenReport(agents: Agent[]): Promise<TokenReport> {
+    const agentStats: TokenStats[] = [];
+
+    for (const agent of agents) {
+      const stats = await this.getAgentTokenStats(agent);
+      if (stats) {
+        agentStats.push(stats);
+      }
+    }
+
+    const totalCost = this.calculateTotalCost(agentStats);
+    const alerts = this.checkBudgetAlerts(totalCost);
+
+    return {
+      generatedAt: new Date(),
+      agents: agentStats,
+      totalCost,
+      budget: this.budget,
+      alerts
+    };
+  }
+
+  /**
+   * Get token statistics for a specific agent
+   */
+  async getAgentTokenStats(agent: Agent): Promise<TokenStats | null> {
+    try {
+      let today: TokenUsage;
+      let thisWeek: TokenUsage;
+      let thisMonth: TokenUsage;
+
+      switch (agent.id) {
+        case 'claude':
+          ({ today, thisWeek, thisMonth } = await this.getClaudeTokenStats(agent));
+          break;
+        case 'cursor':
+          ({ today, thisWeek, thisMonth } = await this.getCursorTokenStats(agent));
+          break;
+        default:
+          return null;
+      }
+
+      return {
+        agent,
+        today,
+        thisWeek,
+        thisMonth
+      };
+    } catch (error) {
+      console.error(`Failed to get token stats for ${agent.name}:`, error);
+      return null;
+    }
+  }
+
+  /**
+   * Get Claude token statistics from REAL data in ~/.claude/stats-cache.json
+   */
+  private async getClaudeTokenStats(agent: Agent): Promise<{
+    today: TokenUsage;
+    thisWeek: TokenUsage;
+    thisMonth: TokenUsage;
+  }> {
+    try {
+      // Get real token data
+      const todayTokens = await getTodayTokens();
+      const weekTokens = await getThisWeekTokens();
+      const monthTokens = await getThisMonthTokens();
+
+      // Get full stats for accurate cost calculation
+      const stats = await parseClaudeStats();
+
+      // Calculate costs with FULL pricing (including cache)
+      const todayCost = await this.calculateClaudeCostAccurate(todayTokens.totalTokens, 'daily');
+      const weekCost = await this.calculateClaudeCostAccurate(weekTokens.totalTokens, 'weekly');
+      const monthCost = await this.calculateClaudeCostAccurate(monthTokens.totalTokens, 'monthly');
+
+      const today: TokenUsage = {
+        agentId: agent.id,
+        agentName: agent.name,
+        inputTokens: todayTokens.inputTokens,
+        outputTokens: todayTokens.outputTokens,
+        totalTokens: todayTokens.totalTokens,
+        estimatedCost: todayCost,
+        period: 'daily',
+        timestamp: new Date()
+      };
+
+      const thisWeek: TokenUsage = {
+        agentId: agent.id,
+        agentName: agent.name,
+        inputTokens: weekTokens.inputTokens,
+        outputTokens: weekTokens.outputTokens,
+        totalTokens: weekTokens.totalTokens,
+        estimatedCost: weekCost,
+        period: 'weekly',
+        timestamp: new Date()
+      };
+
+      const thisMonth: TokenUsage = {
+        agentId: agent.id,
+        agentName: agent.name,
+        inputTokens: monthTokens.inputTokens,
+        outputTokens: monthTokens.outputTokens,
+        totalTokens: monthTokens.totalTokens,
+        estimatedCost: monthCost,
+        period: 'monthly',
+        timestamp: new Date()
+      };
+
+      return { today, thisWeek, thisMonth };
+    } catch (error) {
+      console.error('Failed to read Claude stats:', error);
+      return this.getEmptyTokenStats(agent);
+    }
+  }
+
+  /**
+   * Calculate accurate Claude cost including cache tokens
+   */
+  private async calculateClaudeCostAccurate(totalTokens: number, period: 'daily' | 'weekly' | 'monthly'): Promise<number> {
+    try {
+      const stats = await parseClaudeStats();
+      if (!stats) return 0;
+
+      let cost = 0;
+
+      // Calculate based on model usage proportions
+      for (const [model, usage] of Object.entries(stats.modelUsage)) {
+        const modelTotal = usage.inputTokens + usage.outputTokens + usage.cacheReadInputTokens + usage.cacheCreationInputTokens;
+        if (modelTotal === 0) continue;
+
+        // Proportion of this model
+        const proportion = modelTotal / Object.values(stats.modelUsage).reduce((sum, u) =>
+          sum + u.inputTokens + u.outputTokens + u.cacheReadInputTokens + u.cacheCreationInputTokens, 0);
+
+        // Estimate token breakdown for this period
+        const periodTokens = totalTokens * proportion;
+        const inputRatio = usage.inputTokens / modelTotal;
+        const outputRatio = usage.outputTokens / modelTotal;
+        const cacheReadRatio = usage.cacheReadInputTokens / modelTotal;
+        const cacheCreateRatio = usage.cacheCreationInputTokens / modelTotal;
+
+        const periodInput = periodTokens * inputRatio;
+        const periodOutput = periodTokens * outputRatio;
+        const periodCacheRead = periodTokens * cacheReadRatio;
+        const periodCacheCreate = periodTokens * cacheCreateRatio;
+
+        // Apply correct pricing per model
+        if (model.includes('sonnet')) {
+          // Sonnet 4.6: $3/$15 per 1M, cache read $0.30, cache create $3.75
+          cost += (periodInput * 3 + periodOutput * 15 + periodCacheRead * 0.30 + periodCacheCreate * 3.75) / 1_000_000;
+        } else if (model.includes('opus')) {
+          // Opus 4.6: $15/$75 per 1M, cache read $1.50, cache create $18.75
+          cost += (periodInput * 15 + periodOutput * 75 + periodCacheRead * 1.50 + periodCacheCreate * 18.75) / 1_000_000;
+        } else if (model.includes('haiku')) {
+          // Haiku 4.5: $0.25/$1.25 per 1M, cache read $0.03, cache create $0.30
+          cost += (periodInput * 0.25 + periodOutput * 1.25 + periodCacheRead * 0.03 + periodCacheCreate * 0.30) / 1_000_000;
+        }
+      }
+
+      return cost;
+    } catch (error) {
+      // Fallback to simple estimation
+      return (totalTokens * 10) / 1_000_000; // $10 per 1M as fallback
+    }
+  }
+
+  /**
+   * Get Cursor token statistics (简化版)
+   */
+  private async getCursorTokenStats(agent: Agent): Promise<{
+    today: TokenUsage;
+    thisWeek: TokenUsage;
+    thisMonth: TokenUsage;
+  }> {
+    // Cursor 没有本地统计，返回空
+    return this.getEmptyTokenStats(agent);
+  }
+
+  /**
+   * Get empty token stats
+   */
+  private getEmptyTokenStats(agent: Agent) {
+    const empty: TokenUsage = {
+      agentId: agent.id,
+      agentName: agent.name,
+      inputTokens: 0,
+      outputTokens: 0,
+      totalTokens: 0,
+      estimatedCost: 0,
+      period: 'daily',
+      timestamp: new Date()
+    };
+
+    return {
+      today: { ...empty, period: 'daily' as const },
+      thisWeek: { ...empty, period: 'weekly' as const },
+      thisMonth: { ...empty, period: 'monthly' as const }
+    };
+  }
+
+  /**
+   * Calculate total cost across all agents
+   */
+  private calculateTotalCost(stats: TokenStats[]): {
+    today: number;
+    thisWeek: number;
+    thisMonth: number;
+  } {
+    return {
+      today: stats.reduce((sum, s) => sum + s.today.estimatedCost, 0),
+      thisWeek: stats.reduce((sum, s) => sum + s.thisWeek.estimatedCost, 0),
+      thisMonth: stats.reduce((sum, s) => sum + s.thisMonth.estimatedCost, 0)
+    };
+  }
+
+  /**
+   * Check budget and generate alerts
+   */
+  private checkBudgetAlerts(totalCost: { today: number; thisWeek: number; thisMonth: number }): string[] {
+    const alerts: string[] = [];
+
+    if (this.budget.daily && totalCost.today > this.budget.daily) {
+      const excess = totalCost.today - this.budget.daily;
+      alerts.push(`Daily budget exceeded by $${excess.toFixed(2)}`);
+    }
+
+    if (this.budget.monthly && totalCost.thisMonth > this.budget.monthly) {
+      const excess = totalCost.thisMonth - this.budget.monthly;
+      alerts.push(`Monthly budget exceeded by $${excess.toFixed(2)}`);
+    }
+
+    return alerts;
+  }
+
+  /**
+   * Set budget limits
+   */
+  setBudget(budget: CostBudget): void {
+    this.budget = budget;
+  }
+
+  /**
+   * Get current budget
+   */
+  getBudget(): CostBudget {
+    return this.budget;
+  }
+}

@@ -41,6 +41,8 @@ export interface DetailedData {
     [agentId: string]: {
       today: number;
       thisMonth: number;
+      dataSource?: string;
+      accuracy?: string;
     };
   };
 }
@@ -148,12 +150,14 @@ export class DataService {
       const overallScore =
         scanResults.reduce((sum, r) => sum + r.score, 0) / scanResults.length || 0;
 
-      // 构建按Agent的Token使用数据
-      const tokensByAgent: { [agentId: string]: { today: number; thisMonth: number } } = {};
+      // 构建按Agent的Token使用数据（包含数据来源和准确度）
+      const tokensByAgent: { [agentId: string]: { today: number; thisMonth: number; dataSource?: string; accuracy?: string } } = {};
       tokenReport.agents.forEach((agentStats) => {
         tokensByAgent[agentStats.agent.id] = {
           today: agentStats.today.estimatedCost,
           thisMonth: agentStats.thisMonth.estimatedCost,
+          dataSource: agentStats.today.dataSource,
+          accuracy: agentStats.today.accuracy,
         };
       });
 

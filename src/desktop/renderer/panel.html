@@ -447,6 +447,34 @@
       font-weight: 600;
     }
 
+    .accuracy-badge {
+      font-size: 10px;
+      padding: 2px 6px;
+      border-radius: 4px;
+      margin-left: 6px;
+      font-weight: 500;
+      text-transform: uppercase;
+      letter-spacing: 0.3px;
+    }
+
+    .accuracy-badge.high {
+      background: rgba(34, 197, 94, 0.15);
+      color: #22c55e;
+      border: 1px solid rgba(34, 197, 94, 0.3);
+    }
+
+    .accuracy-badge.medium {
+      background: rgba(251, 191, 36, 0.15);
+      color: #fbbf24;
+      border: 1px solid rgba(251, 191, 36, 0.3);
+    }
+
+    .accuracy-badge.low {
+      background: rgba(239, 68, 68, 0.15);
+      color: #ef4444;
+      border: 1px solid rgba(239, 68, 68, 0.3);
+    }
+
     /* 安全问题列表 */
     .issues-list {
       background: rgba(0, 0, 0, 0.25);
@@ -626,11 +654,17 @@
         </div>
         <div class="token-details" id="token-details">
           <div class="token-row">
-            <span class="token-label">Claude Code (今日)</span>
+            <span class="token-label">
+              Claude Code (今日)
+              <span class="accuracy-badge" id="claude-accuracy" style="display: none;"></span>
+            </span>
             <span class="token-value" id="claude-today">$0.00</span>
           </div>
           <div class="token-row">
-            <span class="token-label">Cursor (今日)</span>
+            <span class="token-label">
+              Cursor (今日)
+              <span class="accuracy-badge" id="cursor-accuracy" style="display: none;"></span>
+            </span>
             <span class="token-value" id="cursor-today">$0.00</span>
           </div>
           <div class="token-row">
@@ -694,6 +728,37 @@
         btn.style.pointerEvents = 'auto';
       }
     });
+
+    // 更新准确度标识
+    function updateAccuracyBadge(elementId, accuracy, dataSource) {
+      const badge = document.getElementById(elementId);
+      if (!accuracy || !dataSource) {
+        badge.style.display = 'none';
+        return;
+      }
+
+      badge.style.display = 'inline-block';
+      badge.className = `accuracy-badge ${accuracy}`;
+
+      // 根据数据来源设置显示文本
+      const labels = {
+        'manual': '手动',
+        'jsonl': 'JSONL',
+        'stats-cache': '缓存',
+        'database': '数据库',
+        'estimated': '估算'
+      };
+
+      badge.textContent = labels[dataSource] || dataSource;
+
+      // 设置tooltip
+      const tooltips = {
+        'high': '高准确度 - 来自真实数据',
+        'medium': '中等准确度 - 基于统计估算',
+        'low': '低准确度 - 粗略估算'
+      };
+      badge.title = tooltips[accuracy] || '';
+    }
 
     // 打开 Dashboard
     document.getElementById('btn-dashboard').addEventListener('click', async () => {
@@ -834,6 +899,10 @@
         document.getElementById('cursor-today').textContent = `$${cursorData.today.toFixed(2)}`;
         document.getElementById('claude-month').textContent = `$${claudeData.thisMonth.toFixed(2)}`;
         document.getElementById('cursor-month').textContent = `$${cursorData.thisMonth.toFixed(2)}`;
+
+        // 显示准确度标识
+        updateAccuracyBadge('claude-accuracy', claudeData.accuracy, claudeData.dataSource);
+        updateAccuracyBadge('cursor-accuracy', cursorData.accuracy, cursorData.dataSource);
       } else {
         // 降级方案：按比例分配
         document.getElementById('claude-today').textContent = `$${(data.costs?.daily * 0.6 || 0).toFixed(2)}`;

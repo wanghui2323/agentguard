@@ -1,0 +1,345 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>AgentGuard Security Report - 3/8/2026</title>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'PingFang SC', 'Hiragino Sans GB', 'Microsoft YaHei', sans-serif;
+      line-height: 1.6;
+      color: #333;
+      background: #f5f5f5;
+      padding: 20px;
+    }
+    .container {
+      max-width: 1200px;
+      margin: 0 auto;
+      background: white;
+      border-radius: 8px;
+      box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+      overflow: hidden;
+    }
+    .header {
+      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+      color: white;
+      padding: 40px;
+      text-align: center;
+    }
+    .header h1 {
+      font-size: 32px;
+      margin-bottom: 10px;
+    }
+    .header .date {
+      opacity: 0.9;
+      font-size: 14px;
+    }
+    .summary {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+      gap: 20px;
+      padding: 40px;
+      background: #fafafa;
+    }
+    .summary-card {
+      background: white;
+      padding: 20px;
+      border-radius: 8px;
+      box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+      text-align: center;
+    }
+    .summary-card .value {
+      font-size: 36px;
+      font-weight: bold;
+      margin: 10px 0;
+    }
+    .summary-card .label {
+      color: #666;
+      font-size: 14px;
+    }
+    .score-excellent { color: #10b981; }
+    .score-good { color: #84cc16; }
+    .score-warning { color: #f59e0b; }
+    .score-danger { color: #ef4444; }
+    .content {
+      padding: 40px;
+    }
+    .section {
+      margin-bottom: 40px;
+    }
+    .section h2 {
+      font-size: 24px;
+      margin-bottom: 20px;
+      padding-bottom: 10px;
+      border-bottom: 2px solid #667eea;
+    }
+    .agent-card {
+      background: #fafafa;
+      border-radius: 8px;
+      padding: 20px;
+      margin-bottom: 20px;
+    }
+    .agent-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 15px;
+    }
+    .agent-name {
+      font-size: 20px;
+      font-weight: bold;
+    }
+    .agent-score {
+      font-size: 24px;
+      font-weight: bold;
+    }
+    .agent-status {
+      display: inline-block;
+      padding: 4px 12px;
+      border-radius: 4px;
+      font-size: 12px;
+      font-weight: 500;
+      margin-left: 10px;
+    }
+    .status-running {
+      background: #d1fae5;
+      color: #065f46;
+    }
+    .status-stopped {
+      background: #f3f4f6;
+      color: #6b7280;
+    }
+    .issue {
+      background: white;
+      border-left: 4px solid;
+      padding: 15px;
+      margin: 10px 0;
+      border-radius: 4px;
+    }
+    .issue-critical { border-color: #dc2626; background: #fef2f2; }
+    .issue-high { border-color: #ea580c; background: #fff7ed; }
+    .issue-medium { border-color: #f59e0b; background: #fffbeb; }
+    .issue-low { border-color: #84cc16; background: #f7fee7; }
+    .issue-title {
+      font-weight: bold;
+      margin-bottom: 5px;
+    }
+    .issue-desc {
+      color: #666;
+      font-size: 14px;
+      margin-bottom: 10px;
+    }
+    .issue-fix {
+      background: rgba(0,0,0,0.03);
+      padding: 8px 12px;
+      border-radius: 4px;
+      font-size: 13px;
+      font-family: monospace;
+    }
+    .badge {
+      display: inline-block;
+      padding: 2px 8px;
+      border-radius: 3px;
+      font-size: 12px;
+      font-weight: 500;
+      margin-right: 5px;
+    }
+    .badge-critical { background: #fecaca; color: #991b1b; }
+    .badge-high { background: #fed7aa; color: #9a3412; }
+    .badge-medium { background: #fde68a; color: #92400e; }
+    .badge-low { background: #d9f99d; color: #365314; }
+    .token-section {
+      background: #f0f9ff;
+      padding: 20px;
+      border-radius: 8px;
+      margin-top: 20px;
+    }
+    .token-summary {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 15px;
+      margin-bottom: 20px;
+    }
+    .token-card {
+      background: white;
+      padding: 15px;
+      border-radius: 6px;
+      text-align: center;
+    }
+    .token-value {
+      font-size: 24px;
+      font-weight: bold;
+      color: #0284c7;
+    }
+    .footer {
+      background: #fafafa;
+      padding: 20px;
+      text-align: center;
+      color: #666;
+      font-size: 14px;
+    }
+    @media print {
+      body { background: white; padding: 0; }
+      .container { box-shadow: none; }
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <div class="header">
+      <h1>🛡️ AgentGuard Security Report</h1>
+      <div class="date">Generated on 2026/3/8 22:18:15</div>
+    </div>
+
+    <div class="summary">
+      <div class="summary-card">
+        <div class="label">Overall Score</div>
+        <div class="value score-excellent">92/100</div>
+      </div>
+      <div class="summary-card">
+        <div class="label">Agents Detected</div>
+        <div class="value">3</div>
+      </div>
+      <div class="summary-card">
+        <div class="label">Critical Issues</div>
+        <div class="value score-danger">0</div>
+      </div>
+      <div class="summary-card">
+        <div class="label">High Issues</div>
+        <div class="value score-warning">1</div>
+      </div>
+      <div class="summary-card">
+        <div class="label">Medium Issues</div>
+        <div class="value">0</div>
+      </div>
+      <div class="summary-card">
+        <div class="label">Low Issues</div>
+        <div class="value">0</div>
+      </div>
+    </div>
+
+    <div class="content">
+      <div class="section">
+        <h2>📊 Security Analysis by Agent</h2>
+        
+      <div class="agent-card">
+        <div class="agent-header">
+          <div>
+            <span class="agent-name">OpenClaw</span>
+            <span class="agent-status status-stopped">stopped</span>
+            
+          </div>
+          <div class="agent-score score-good">75/100</div>
+        </div>
+
+        
+          <div class="issues">
+            
+              <div class="issue issue-high">
+                <div class="issue-title">
+                  <span class="badge badge-high">HIGH</span>
+                  Node.js 版本过低
+                </div>
+                <div class="issue-desc">当前 Node.js 版本为 20.19.6，低于推荐的 22.12.0，可能存在已知安全漏洞。</div>
+                <div class="issue-fix">💡 升级 Node.js 到 22.12.0 或更高版本以获取安全补丁。</div>
+              </div>
+            
+          </div>
+        
+      </div>
+    
+
+      <div class="agent-card">
+        <div class="agent-header">
+          <div>
+            <span class="agent-name">Claude Code</span>
+            <span class="agent-status status-running">running</span>
+            <span style="color: #666; font-size: 14px;"> PID 95846</span>
+          </div>
+          <div class="agent-score score-excellent">100/100</div>
+        </div>
+
+        <p style="color: #10b981;">✅ No security issues detected</p>
+      </div>
+    
+
+      <div class="agent-card">
+        <div class="agent-header">
+          <div>
+            <span class="agent-name">Cursor IDE</span>
+            <span class="agent-status status-running">running</span>
+            <span style="color: #666; font-size: 14px;"> PID 43331</span>
+          </div>
+          <div class="agent-score score-excellent">100/100</div>
+        </div>
+
+        <p style="color: #10b981;">✅ No security issues detected</p>
+      </div>
+    
+      </div>
+
+      
+      <div class="section">
+        <h2>💰 Token Usage & Cost Report</h2>
+        <div class="token-section">
+          <div class="token-summary">
+            <div class="token-card">
+              <div class="label">Today</div>
+              <div class="token-value">$154.34</div>
+            </div>
+            <div class="token-card">
+              <div class="label">This Week</div>
+              <div class="token-value">$319.38</div>
+            </div>
+            <div class="token-card">
+              <div class="label">This Month</div>
+              <div class="token-value">$1800.01</div>
+            </div>
+          </div>
+
+          
+
+          
+
+          <h3 style="margin: 20px 0 10px 0;">Per-Agent Breakdown</h3>
+          
+            <div style="background: white; padding: 15px; border-radius: 6px; margin: 10px 0;">
+              <div style="font-weight: bold; margin-bottom: 10px;">OpenClaw</div>
+              <div style="font-size: 14px; color: #666;">
+                <div>Today: 0 tokens → $0.00</div>
+                <div>This Week: 0 tokens → $0.00</div>
+                <div>This Month: 0 tokens → $0.00</div>
+              </div>
+            </div>
+          
+            <div style="background: white; padding: 15px; border-radius: 6px; margin: 10px 0;">
+              <div style="font-weight: bold; margin-bottom: 10px;">Claude Code</div>
+              <div style="font-size: 14px; color: #666;">
+                <div>Today: 3,242,000 tokens (1,621,000 in / 1,621,000 out) → $145.89</div>
+                <div>This Week: 5,622,000 tokens (2,811,000 in / 2,811,000 out) → $252.99</div>
+                <div>This Month: 32,291,000 tokens (16,143,100 in / 16,147,900 out) → $1453.24</div>
+              </div>
+            </div>
+          
+            <div style="background: white; padding: 15px; border-radius: 6px; margin: 10px 0;">
+              <div style="font-weight: bold; margin-bottom: 10px;">Cursor IDE</div>
+              <div style="font-size: 14px; color: #666;">
+                <div>Today: 384,000 tokens (153,600 in / 230,400 out) → $8.45</div>
+                <div>This Week: 3,017,500 tokens (1,207,000 in / 1,810,500 out) → $66.38</div>
+                <div>This Month: 15,762,500 tokens (6,305,000 in / 9,457,500 out) → $346.77</div>
+              </div>
+            </div>
+          
+        </div>
+      </div>
+    
+    </div>
+
+    <div class="footer">
+      <p>Generated by <strong>AgentGuard v0.3.0</strong></p>
+      <p>The security control center for local AI agents</p>
+    </div>
+  </div>
+</body>
+</html>

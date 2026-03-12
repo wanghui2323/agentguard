@@ -16,8 +16,6 @@
       height: 60px;
       overflow: hidden;
       background: transparent;
-      -webkit-app-region: drag;
-      cursor: move;
       font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
     }
 
@@ -34,6 +32,7 @@
       -webkit-app-region: no-drag;
       position: relative;
       backdrop-filter: blur(10px);
+      background: linear-gradient(135deg, #2d3748 0%, #1a202c 100%);
     }
 
     .floating-ball:hover {
@@ -43,6 +42,67 @@
 
     .floating-ball:active {
       transform: scale(1.02);
+    }
+
+    /* 拖拽时的透明效果 */
+    .floating-ball.dragging {
+      opacity: 0.7;
+      transform: scale(1.05);
+    }
+
+    /* Tooltip 提示框 */
+    .tooltip {
+      position: absolute;
+      top: -80px;
+      left: 50%;
+      transform: translateX(-50%);
+      background: rgba(26, 32, 44, 0.95);
+      color: #e2e8f0;
+      padding: 10px 14px;
+      border-radius: 8px;
+      font-size: 11px;
+      line-height: 1.5;
+      white-space: nowrap;
+      pointer-events: none;
+      opacity: 0;
+      transition: opacity 0.3s ease;
+      box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+      backdrop-filter: blur(10px);
+      border: 1px solid rgba(255, 255, 255, 0.1);
+      z-index: 10;
+    }
+
+    .tooltip.show {
+      opacity: 1;
+    }
+
+    .tooltip::after {
+      content: '';
+      position: absolute;
+      bottom: -6px;
+      left: 50%;
+      transform: translateX(-50%);
+      width: 0;
+      height: 0;
+      border-left: 6px solid transparent;
+      border-right: 6px solid transparent;
+      border-top: 6px solid rgba(26, 32, 44, 0.95);
+    }
+
+    .tooltip-row {
+      display: flex;
+      justify-content: space-between;
+      gap: 12px;
+      margin: 2px 0;
+    }
+
+    .tooltip-label {
+      color: #94a3b8;
+    }
+
+    .tooltip-value {
+      color: #f7fafc;
+      font-weight: 600;
     }
 
     /* SVG 原子图标容器 */
@@ -84,21 +144,26 @@
       }
     }
 
-    /* 状态指示小点 */
+    /* 状态指示小点（隐藏，通过悬浮球颜色判断状态）*/
     .status-dot {
-      position: absolute;
-      top: 6px;
-      right: 6px;
-      width: 10px;
-      height: 10px;
-      border-radius: 50%;
-      background: #fff;
-      box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
+      display: none;
     }
   </style>
 </head>
 <body>
-  <div id="floating-ball" class="floating-ball status-normal" title="AgentGuard">
+  <div id="floating-ball" class="floating-ball status-normal">
+    <!-- Tooltip 提示框 -->
+    <div id="tooltip" class="tooltip">
+      <div class="tooltip-row">
+        <span class="tooltip-label">今日消耗</span>
+        <span class="tooltip-value" id="tooltip-cost">$0.00</span>
+      </div>
+      <div class="tooltip-row">
+        <span class="tooltip-label">安全评分</span>
+        <span class="tooltip-value" id="tooltip-score">--/100</span>
+      </div>
+    </div>
+
     <!-- 原子图标 SVG (类似 Electron) -->
     <svg class="atom-icon" viewBox="0 0 32 32" fill="none" xmlns="http://www.w3.org/2000/svg">
       <!-- 中心原子核 -->
@@ -182,11 +247,73 @@
       }
 
       currentStatus = status;
+
+      // 更新 tooltip 数据
+      document.getElementById('tooltip-cost').textContent = `$${status.cost?.toFixed(2) || '0.00'}`;
+      document.getElementById('tooltip-score').textContent = `${status.score || '--'}/100`;
     }
 
-    // 点击悬浮球
-    document.getElementById('floating-ball').addEventListener('click', () => {
-      ipcRenderer.send('toggle-panel');
+    // Tooltip 显示逻辑
+    const ball = document.getElementById('floating-ball');
+    const tooltip = document.getElementById('tooltip');
+    let tooltipTimeout = null;
+
+    ball.addEventListener('mouseenter', () => {
+      tooltipTimeout = setTimeout(() => {
+        tooltip.classList.add('show');
+      }, 500); // 500ms 延迟显示
+    });
+
+    ball.addEventListener('mouseleave', () => {
+      if (tooltipTimeout) clearTimeout(tooltipTimeout);
+      tooltip.classList.remove('show');
+    });
+
+    // 拖拽功能
+    let isDragging = false;
+    let dragStartTime = 0;
+    let startX = 0;
+    let startY = 0;
+
+    ball.addEventListener('mousedown', (e) => {
+      isDragging = true;
+      dragStartTime = Date.now();
+      startX = e.screenX;
+      startY = e.screenY;
+      ball.classList.add('dragging');
+      tooltip.classList.remove('show'); // 拖拽时隐藏 tooltip
+
+      // 通知主进程开始拖动
+      ipcRenderer.send('start-drag', { x: e.screenX, y: e.screenY });
+    });
+
+    window.addEventListener('mousemove', (e) => {
+      if (isDragging) {
+        ipcRenderer.send('drag-move', { x: e.screenX, y: e.screenY });
+      }
+    });
+
+    window.addEventListener('mouseup', (e) => {
+      if (isDragging) {
+        const dragDuration = Date.now() - dragStartTime;
+        const dragDistance = Math.sqrt(
+          Math.pow(e.screenX - startX, 2) + Math.pow(e.screenY - startY, 2)
+        );
+
+        // 如果拖动时间很短且距离很小，认为是点击
+        const isClick = dragDuration < 200 && dragDistance < 5;
+
+        isDragging = false;
+        ball.classList.remove('dragging');
+
+        // 通知主进程停止拖动
+        ipcRenderer.send('stop-drag');
+
+        // 如果是点击，触发面板切换
+        if (isClick) {
+          ipcRenderer.send('toggle-panel');
+        }
+      }
     });
 
     // 监听状态更新 (从主进程推送)

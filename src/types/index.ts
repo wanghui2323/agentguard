@@ -60,6 +60,9 @@ export interface PermissionRisk {
   reason: string;
 }
 
+export type DataSource = 'manual' | 'jsonl' | 'stats-cache' | 'database' | 'estimated';
+export type DataAccuracy = 'high' | 'medium' | 'low';
+
 export interface TokenUsage {
   agentId: string;
   agentName: string;
@@ -72,6 +75,8 @@ export interface TokenUsage {
   requestCount?: number;
   period: 'daily' | 'weekly' | 'monthly';
   timestamp: Date;
+  dataSource?: DataSource;
+  accuracy?: DataAccuracy;
 }
 
 export interface TokenStats {

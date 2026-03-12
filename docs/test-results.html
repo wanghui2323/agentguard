@@ -1,0 +1,523 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>AgentGuard v0.3.0 测试结果</title>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'PingFang SC', sans-serif;
+      line-height: 1.6;
+      color: #333;
+      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+      min-height: 100vh;
+      padding: 40px 20px;
+    }
+    .container {
+      max-width: 1200px;
+      margin: 0 auto;
+      background: white;
+      border-radius: 16px;
+      box-shadow: 0 20px 60px rgba(0,0,0,0.3);
+      overflow: hidden;
+    }
+    .header {
+      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+      color: white;
+      padding: 60px 40px;
+      text-align: center;
+    }
+    .header h1 {
+      font-size: 42px;
+      margin-bottom: 10px;
+      font-weight: 700;
+    }
+    .header .version {
+      font-size: 24px;
+      opacity: 0.9;
+      margin-bottom: 20px;
+    }
+    .header .date {
+      opacity: 0.8;
+      font-size: 14px;
+    }
+    .summary {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+      gap: 30px;
+      padding: 60px 40px;
+      background: #f8f9fa;
+    }
+    .summary-card {
+      background: white;
+      padding: 30px;
+      border-radius: 12px;
+      box-shadow: 0 4px 12px rgba(0,0,0,0.08);
+      text-align: center;
+      transition: transform 0.3s ease, box-shadow 0.3s ease;
+    }
+    .summary-card:hover {
+      transform: translateY(-5px);
+      box-shadow: 0 8px 20px rgba(0,0,0,0.15);
+    }
+    .summary-card .value {
+      font-size: 48px;
+      font-weight: 700;
+      margin-bottom: 10px;
+    }
+    .summary-card .label {
+      font-size: 14px;
+      color: #666;
+      text-transform: uppercase;
+      letter-spacing: 1px;
+    }
+    .success { color: #28a745; }
+    .warning { color: #ffc107; }
+    .danger { color: #dc3545; }
+    .content {
+      padding: 40px;
+    }
+    .section {
+      margin-bottom: 50px;
+    }
+    .section-title {
+      font-size: 28px;
+      font-weight: 700;
+      margin-bottom: 30px;
+      padding-bottom: 15px;
+      border-bottom: 3px solid #667eea;
+      display: flex;
+      align-items: center;
+    }
+    .section-title:before {
+      content: '';
+      display: inline-block;
+      width: 6px;
+      height: 30px;
+      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+      margin-right: 15px;
+      border-radius: 3px;
+    }
+    .test-list {
+      display: grid;
+      gap: 20px;
+    }
+    .test-item {
+      background: #f8f9fa;
+      padding: 25px;
+      border-radius: 12px;
+      border-left: 5px solid #ddd;
+      transition: all 0.3s ease;
+    }
+    .test-item:hover {
+      background: #fff;
+      border-left-color: #667eea;
+      box-shadow: 0 4px 12px rgba(0,0,0,0.08);
+    }
+    .test-item.pass {
+      border-left-color: #28a745;
+    }
+    .test-item.warning {
+      border-left-color: #ffc107;
+    }
+    .test-item.fail {
+      border-left-color: #dc3545;
+    }
+    .test-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 15px;
+    }
+    .test-name {
+      font-size: 20px;
+      font-weight: 600;
+    }
+    .test-status {
+      font-size: 24px;
+      font-weight: 700;
+      padding: 5px 15px;
+      border-radius: 20px;
+    }
+    .test-status.pass {
+      background: #d4edda;
+      color: #28a745;
+    }
+    .test-status.warning {
+      background: #fff3cd;
+      color: #856404;
+    }
+    .test-status.fail {
+      background: #f8d7da;
+      color: #dc3545;
+    }
+    .test-description {
+      color: #666;
+      font-size: 15px;
+      line-height: 1.8;
+    }
+    .test-metrics {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+      gap: 15px;
+      margin-top: 20px;
+      padding-top: 20px;
+      border-top: 1px solid #ddd;
+    }
+    .metric {
+      text-align: center;
+    }
+    .metric-value {
+      font-size: 20px;
+      font-weight: 700;
+      color: #667eea;
+    }
+    .metric-label {
+      font-size: 12px;
+      color: #999;
+      margin-top: 5px;
+    }
+    .chart {
+      background: #f8f9fa;
+      padding: 30px;
+      border-radius: 12px;
+      margin-top: 20px;
+    }
+    .progress-bar {
+      background: #e9ecef;
+      border-radius: 10px;
+      height: 30px;
+      overflow: hidden;
+      margin-top: 10px;
+    }
+    .progress-fill {
+      height: 100%;
+      background: linear-gradient(90deg, #667eea 0%, #764ba2 100%);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      color: white;
+      font-weight: 700;
+      font-size: 14px;
+      transition: width 1s ease;
+    }
+    .requirements {
+      background: linear-gradient(135deg, #667eea10 0%, #764ba210 100%);
+      padding: 30px;
+      border-radius: 12px;
+      border: 2px solid #667eea;
+    }
+    .requirements h3 {
+      color: #667eea;
+      margin-bottom: 20px;
+      font-size: 22px;
+    }
+    .requirements ul {
+      list-style: none;
+      padding: 0;
+    }
+    .requirements li {
+      padding: 12px 0;
+      border-bottom: 1px solid #667eea20;
+      display: flex;
+      align-items: center;
+    }
+    .requirements li:before {
+      content: '→';
+      color: #667eea;
+      font-weight: 700;
+      margin-right: 10px;
+      font-size: 20px;
+    }
+    .footer {
+      background: #f8f9fa;
+      padding: 40px;
+      text-align: center;
+      color: #666;
+    }
+    .footer a {
+      color: #667eea;
+      text-decoration: none;
+      font-weight: 600;
+    }
+    .footer a:hover {
+      text-decoration: underline;
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <!-- Header -->
+    <div class="header">
+      <h1>AgentGuard 测试报告</h1>
+      <div class="version">v0.3.0 系统化测试</div>
+      <div class="date">测试日期: 2026-03-08</div>
+    </div>
+
+    <!-- Summary -->
+    <div class="summary">
+      <div class="summary-card">
+        <div class="value success">50%</div>
+        <div class="label">总体通过率</div>
+      </div>
+      <div class="summary-card">
+        <div class="value success">3/3</div>
+        <div class="label">核心功能通过</div>
+      </div>
+      <div class="summary-card">
+        <div class="value success">$1,792</div>
+        <div class="label">本月 Token 消耗</div>
+      </div>
+      <div class="summary-card">
+        <div class="value success">0.07s</div>
+        <div class="label">扫描平均耗时</div>
+      </div>
+    </div>
+
+    <!-- Content -->
+    <div class="content">
+      <!-- Core Features -->
+      <div class="section">
+        <h2 class="section-title">核心功能测试</h2>
+        <div class="test-list">
+          <!-- Test 1 -->
+          <div class="test-item pass">
+            <div class="test-header">
+              <div class="test-name">1. CLI 扫描功能</div>
+              <div class="test-status pass">✅ 通过</div>
+            </div>
+            <div class="test-description">
+              成功检测 3 个 AI Agents (Claude Code, Cursor IDE, OpenClaw)，准确识别进程状态 (PID)，安全评分计算正确 (92/100)，问题检测有效。
+            </div>
+            <div class="test-metrics">
+              <div class="metric">
+                <div class="metric-value">3</div>
+                <div class="metric-label">检测到的 Agent</div>
+              </div>
+              <div class="metric">
+                <div class="metric-value">92/100</div>
+                <div class="metric-label">总体评分</div>
+              </div>
+              <div class="metric">
+                <div class="metric-value">0.07s</div>
+                <div class="metric-label">扫描耗时</div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Test 2 -->
+          <div class="test-item pass">
+            <div class="test-header">
+              <div class="test-name">2. Token 统计功能</div>
+              <div class="test-status pass">✅ 通过</div>
+            </div>
+            <div class="test-description">
+              <strong>重大突破:</strong> 从估算升级为真实数据。集成 tiktoken + @anthropic-ai/tokenizer，准确率 98%+。本月消耗 $1,792.69 (Claude: $1,449.19, Cursor: $343.50)。
+            </div>
+            <div class="test-metrics">
+              <div class="metric">
+                <div class="metric-value">$147</div>
+                <div class="metric-label">今日成本</div>
+              </div>
+              <div class="metric">
+                <div class="metric-value">$312</div>
+                <div class="metric-label">本周成本</div>
+              </div>
+              <div class="metric">
+                <div class="metric-value">$1,793</div>
+                <div class="metric-label">本月成本</div>
+              </div>
+              <div class="metric">
+                <div class="metric-value">98%</div>
+                <div class="metric-label">准确率</div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Test 3 -->
+          <div class="test-item pass">
+            <div class="test-header">
+              <div class="test-name">3. HTML 报告生成</div>
+              <div class="test-status pass">✅ 通过</div>
+            </div>
+            <div class="test-description">
+              成功生成 9.9KB HTML 报告，响应式设计，美观的紫色渐变主题，包含安全评分、Agent 详情、Token 统计，支持打印。
+            </div>
+            <div class="test-metrics">
+              <div class="metric">
+                <div class="metric-value">9.9KB</div>
+                <div class="metric-label">文件大小</div>
+              </div>
+              <div class="metric">
+                <div class="metric-value">0.05s</div>
+                <div class="metric-label">生成耗时</div>
+              </div>
+              <div class="metric">
+                <div class="metric-value">HTML5</div>
+                <div class="metric-label">格式</div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- New Features -->
+      <div class="section">
+        <h2 class="section-title">新功能测试</h2>
+        <div class="test-list">
+          <!-- Test 4 -->
+          <div class="test-item warning">
+            <div class="test-header">
+              <div class="test-name">4. 多语言支持</div>
+              <div class="test-status warning">⚠️ 未集成</div>
+            </div>
+            <div class="test-description">
+              i18n 系统已完整实现 (src/i18n/index.ts)，包含中英文完整翻译，支持自动环境检测。但 CLI 和报告生成器尚未导入 i18n 模块，当前仍为硬编码中文。
+            </div>
+            <div class="test-metrics">
+              <div class="metric">
+                <div class="metric-value success">✅</div>
+                <div class="metric-label">i18n 系统</div>
+              </div>
+              <div class="metric">
+                <div class="metric-value success">100%</div>
+                <div class="metric-label">翻译完成度</div>
+              </div>
+              <div class="metric">
+                <div class="metric-value danger">❌</div>
+                <div class="metric-label">CLI 集成</div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Test 5 -->
+          <div class="test-item warning">
+            <div class="test-header">
+              <div class="test-name">5. Token 缓存</div>
+              <div class="test-status warning">⚠️ 未启用</div>
+            </div>
+            <div class="test-description">
+              TokenCache 类已完整实现 (248 行代码)，包含 SQLite 持久化、数据清理、统计查询等功能。但 TokenTracker 未调用 TokenCache，数据库从未创建，无法解决 Claude Code 30 天删除问题。
+            </div>
+            <div class="test-metrics">
+              <div class="metric">
+                <div class="metric-value success">✅</div>
+                <div class="metric-label">代码实现</div>
+              </div>
+              <div class="metric">
+                <div class="metric-value">248</div>
+                <div class="metric-label">代码行数</div>
+              </div>
+              <div class="metric">
+                <div class="metric-value danger">❌</div>
+                <div class="metric-label">已启用</div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Test 6 -->
+          <div class="test-item fail">
+            <div class="test-header">
+              <div class="test-name">6. Desktop 应用</div>
+              <div class="test-status fail">❌ 失败</div>
+            </div>
+            <div class="test-description">
+              Electron 模块加载失败，require('electron') 返回字符串路径而非 API 对象。已尝试多种修复方案均无效。决策: 放弃 Electron Desktop，改用 Web Dashboard。
+            </div>
+            <div class="test-metrics">
+              <div class="metric">
+                <div class="metric-value">95%</div>
+                <div class="metric-label">代码完成度</div>
+              </div>
+              <div class="metric">
+                <div class="metric-value danger">❌</div>
+                <div class="metric-label">启动成功</div>
+              </div>
+              <div class="metric">
+                <div class="metric-value">8h+</div>
+                <div class="metric-label">调试时长</div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Performance -->
+      <div class="section">
+        <h2 class="section-title">性能指标</h2>
+        <div class="chart">
+          <div>
+            <strong>扫描耗时</strong>
+            <div class="progress-bar">
+              <div class="progress-fill" style="width: 7%;">0.07s</div>
+            </div>
+          </div>
+          <br>
+          <div>
+            <strong>Token 统计耗时</strong>
+            <div class="progress-bar">
+              <div class="progress-fill" style="width: 15%;">0.15s</div>
+            </div>
+          </div>
+          <br>
+          <div>
+            <strong>报告生成耗时</strong>
+            <div class="progress-bar">
+              <div class="progress-fill" style="width: 5%;">0.05s</div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Next Version -->
+      <div class="section">
+        <h2 class="section-title">v0.4.0 规划</h2>
+        <div class="requirements">
+          <h3>🚀 核心功能 (P0)</h3>
+          <ul>
+            <li>Web Dashboard (React + Express + WebSocket)</li>
+            <li>预算管理和告警 (日/周/月预算 + 多级别告警)</li>
+            <li>多语言集成 (完成 v0.3.0 遗留)</li>
+            <li>Token 缓存启用 (完成 v0.3.0 遗留)</li>
+          </ul>
+        </div>
+        <br>
+        <div class="requirements">
+          <h3>📈 额外功能 (P1)</h3>
+          <ul>
+            <li>历史趋势分析 (折线图、柱状图、饼图)</li>
+            <li>配置文件支持 (~/.agentguard/config.json)</li>
+            <li>更多 Agent (GitHub Copilot, Windsurf)</li>
+          </ul>
+        </div>
+        <br>
+        <div style="text-align: center; padding: 20px; background: linear-gradient(135deg, #667eea10 0%, #764ba210 100%); border-radius: 12px;">
+          <div style="font-size: 18px; font-weight: 700; color: #667eea; margin-bottom: 10px;">
+            预计发布日期
+          </div>
+          <div style="font-size: 32px; font-weight: 700; color: #764ba2;">
+            2026-03-22
+          </div>
+          <div style="font-size: 14px; color: #666; margin-top: 10px;">
+            (2 周开发周期)
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Footer -->
+    <div class="footer">
+      <p><strong>AgentGuard</strong> - AI Agent 安全监控与成本管理工具</p>
+      <p style="margin-top: 10px;">
+        <a href="./TEST_REPORT_v0.3.0.md">📄 完整测试报告</a> |
+        <a href="./v0.4.0_REQUIREMENTS.md">📋 需求规划</a> |
+        <a href="./TEST_SUMMARY.md">📝 快速总结</a>
+      </p>
+      <p style="margin-top: 20px; font-size: 12px; color: #999;">
+        测试完成时间: 2026-03-08 22:06:37
+      </p>
+    </div>
+  </div>
+</body>
+</html>

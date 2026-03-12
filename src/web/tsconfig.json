@@ -1,0 +1,16 @@
+{
+  "extends": "../../tsconfig.json",
+  "compilerOptions": {
+    "outDir": "../../dist/web",
+    "rootDir": "..",
+    "types": ["node"],
+    "esModuleInterop": true,
+    "resolveJsonModule": true
+  },
+  "include": [
+    "../web/**/*.ts",
+    "../core/**/*.ts",
+    "../utils/**/*.ts",
+    "../types/**/*.ts"
+  ]
+}

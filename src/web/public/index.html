@@ -1,0 +1,457 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>AgentGuard Dashboard - AI Agent 安全监控中心</title>
+  <style>
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Helvetica Neue', Arial, sans-serif;
+      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+      color: #333;
+      padding: 20px;
+      min-height: 100vh;
+    }
+
+    .container {
+      max-width: 1400px;
+      margin: 0 auto;
+    }
+
+    .header {
+      background: rgba(255, 255, 255, 0.95);
+      border-radius: 16px;
+      padding: 30px;
+      margin-bottom: 24px;
+      box-shadow: 0 8px 32px rgba(0, 0, 0, 0.1);
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+
+    .header h1 {
+      font-size: 32px;
+      color: #667eea;
+      display: flex;
+      align-items: center;
+      gap: 12px;
+    }
+
+    .status-badge {
+      display: inline-block;
+      padding: 6px 16px;
+      border-radius: 20px;
+      font-size: 14px;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+    }
+
+    .status-normal { background: #10b981; color: white; }
+    .status-warning { background: #f59e0b; color: white; }
+    .status-critical { background: #ef4444; color: white; animation: pulse 2s infinite; }
+
+    @keyframes pulse {
+      0%, 100% { opacity: 1; }
+      50% { opacity: 0.7; }
+    }
+
+    .dashboard {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+      gap: 24px;
+      margin-bottom: 24px;
+    }
+
+    .card {
+      background: rgba(255, 255, 255, 0.95);
+      border-radius: 16px;
+      padding: 24px;
+      box-shadow: 0 8px 32px rgba(0, 0, 0, 0.1);
+      transition: transform 0.2s, box-shadow 0.2s;
+    }
+
+    .card:hover {
+      transform: translateY(-4px);
+      box-shadow: 0 12px 48px rgba(0, 0, 0, 0.15);
+    }
+
+    .card-title {
+      font-size: 14px;
+      color: #64748b;
+      text-transform: uppercase;
+      letter-spacing: 1px;
+      margin-bottom: 12px;
+      font-weight: 600;
+    }
+
+    .card-value {
+      font-size: 48px;
+      font-weight: 700;
+      color: #667eea;
+      margin-bottom: 8px;
+    }
+
+    .card-subtitle {
+      font-size: 14px;
+      color: #94a3b8;
+    }
+
+    .security-score {
+      position: relative;
+      width: 150px;
+      height: 150px;
+      margin: 20px auto;
+    }
+
+    .security-circle {
+      width: 100%;
+      height: 100%;
+      border-radius: 50%;
+      background: conic-gradient(
+        #10b981 0deg,
+        #10b981 calc(var(--score) * 3.6deg),
+        #e2e8f0 calc(var(--score) * 3.6deg),
+        #e2e8f0 360deg
+      );
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      position: relative;
+    }
+
+    .security-circle::before {
+      content: '';
+      width: 120px;
+      height: 120px;
+      background: white;
+      border-radius: 50%;
+      position: absolute;
+    }
+
+    .security-value {
+      font-size: 36px;
+      font-weight: 700;
+      color: #667eea;
+      position: relative;
+      z-index: 1;
+    }
+
+    .agents-list {
+      background: rgba(255, 255, 255, 0.95);
+      border-radius: 16px;
+      padding: 24px;
+      box-shadow: 0 8px 32px rgba(0, 0, 0, 0.1);
+      margin-bottom: 24px;
+    }
+
+    .agents-table {
+      width: 100%;
+      border-collapse: collapse;
+      margin-top: 16px;
+    }
+
+    .agents-table th {
+      background: #f8fafc;
+      padding: 12px;
+      text-align: left;
+      font-size: 12px;
+      color: #64748b;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+      font-weight: 600;
+    }
+
+    .agents-table td {
+      padding: 16px 12px;
+      border-bottom: 1px solid #e2e8f0;
+    }
+
+    .agents-table tr:last-child td {
+      border-bottom: none;
+    }
+
+    .agent-name {
+      font-weight: 600;
+      color: #1e293b;
+      font-size: 14px;
+    }
+
+    .agent-status {
+      display: inline-block;
+      padding: 4px 12px;
+      border-radius: 12px;
+      font-size: 12px;
+      font-weight: 600;
+    }
+
+    .agent-status.active {
+      background: #d1fae5;
+      color: #065f46;
+    }
+
+    .agent-status.inactive {
+      background: #fee2e2;
+      color: #991b1b;
+    }
+
+    .risk-level {
+      display: inline-block;
+      padding: 4px 12px;
+      border-radius: 12px;
+      font-size: 12px;
+      font-weight: 600;
+    }
+
+    .risk-safe {
+      background: #d1fae5;
+      color: #065f46;
+    }
+
+    .risk-warning {
+      background: #fef3c7;
+      color: #92400e;
+    }
+
+    .risk-critical {
+      background: #fee2e2;
+      color: #991b1b;
+    }
+
+    .refresh-btn {
+      background: #667eea;
+      color: white;
+      border: none;
+      padding: 12px 24px;
+      border-radius: 8px;
+      font-size: 14px;
+      font-weight: 600;
+      cursor: pointer;
+      transition: background 0.2s;
+    }
+
+    .refresh-btn:hover {
+      background: #5a67d8;
+    }
+
+    .refresh-btn:active {
+      transform: scale(0.95);
+    }
+
+    .loading {
+      text-align: center;
+      padding: 60px;
+      color: white;
+      font-size: 18px;
+    }
+
+    .timestamp {
+      text-align: center;
+      color: rgba(255, 255, 255, 0.8);
+      font-size: 14px;
+      margin-top: 16px;
+    }
+
+    .alert-item {
+      background: #fef3c7;
+      border-left: 4px solid #f59e0b;
+      padding: 12px;
+      margin-bottom: 8px;
+      border-radius: 4px;
+      font-size: 14px;
+    }
+
+    .alert-item.critical {
+      background: #fee2e2;
+      border-left-color: #ef4444;
+    }
+
+    .footer {
+      text-align: center;
+      color: rgba(255, 255, 255, 0.9);
+      font-size: 14px;
+      margin-top: 32px;
+      padding: 20px;
+    }
+
+    .footer a {
+      color: white;
+      text-decoration: none;
+      font-weight: 600;
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <div class="header">
+      <h1>
+        <span>🛡️</span>
+        AgentGuard Dashboard
+      </h1>
+      <div>
+        <span id="statusBadge" class="status-badge">Loading...</span>
+        <button class="refresh-btn" onclick="refreshData()">🔄 刷新数据</button>
+      </div>
+    </div>
+
+    <div class="dashboard">
+      <!-- Agent 统计 -->
+      <div class="card">
+        <div class="card-title">🤖 Agent 数量</div>
+        <div class="card-value" id="agentCount">-</div>
+        <div class="card-subtitle" id="agentStatus">加载中...</div>
+      </div>
+
+      <!-- 今日花费 -->
+      <div class="card">
+        <div class="card-title">💰 今日花费</div>
+        <div class="card-value" id="todayCost">-</div>
+        <div class="card-subtitle">本月累计: <span id="monthCost">-</span></div>
+      </div>
+
+      <!-- 安全评分 -->
+      <div class="card">
+        <div class="card-title">🔒 安全评分</div>
+        <div class="security-score">
+          <div class="security-circle" id="securityCircle">
+            <div class="security-value" id="securityScore">-</div>
+          </div>
+        </div>
+        <div class="card-subtitle" style="text-align: center;" id="securityLevel">-</div>
+      </div>
+
+      <!-- 告警数量 -->
+      <div class="card">
+        <div class="card-title">⚠️ 告警</div>
+        <div class="card-value" id="alertCount">-</div>
+        <div class="card-subtitle">严重: <span id="criticalCount">-</span> | 警告: <span id="warningCount">-</span></div>
+      </div>
+    </div>
+
+    <!-- Agent 列表 -->
+    <div class="agents-list">
+      <h2 class="card-title">📋 运行中的 Agent</h2>
+      <table class="agents-table">
+        <thead>
+          <tr>
+            <th>Agent 名称</th>
+            <th>PID</th>
+            <th>状态</th>
+            <th>安全评分</th>
+            <th>风险等级</th>
+            <th>告警数量</th>
+          </tr>
+        </thead>
+        <tbody id="agentsTableBody">
+          <tr>
+            <td colspan="6" style="text-align: center; color: #94a3b8;">加载中...</td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+
+    <div class="timestamp" id="timestamp">-</div>
+
+    <div class="footer">
+      AgentGuard v0.4.0 | 开源 AI Agent 安全监控工具<br>
+      <a href="https://github.com/wanghui2323/agentguard" target="_blank">GitHub</a> |
+      <a href="/api/health" target="_blank">API Health</a>
+    </div>
+  </div>
+
+  <script>
+    let refreshInterval;
+
+    async function refreshData() {
+      try {
+        // Fetch status
+        const statusRes = await fetch('/api/status');
+        const status = await statusRes.json();
+
+        // Update status badge
+        const badge = document.getElementById('statusBadge');
+        badge.className = `status-badge status-${status.status}`;
+        badge.textContent = {
+          normal: '✅ 正常',
+          warning: '⚠️ 警告',
+          critical: '🔴 严重'
+        }[status.status] || status.status;
+
+        // Update agent count
+        document.getElementById('agentCount').textContent = status.agents.total;
+        document.getElementById('agentStatus').textContent =
+          `活跃: ${status.agents.active} | 离线: ${status.agents.inactive}`;
+
+        // Update costs
+        document.getElementById('todayCost').textContent = status.cost.formatted.today;
+        document.getElementById('monthCost').textContent = status.cost.formatted.thisMonth;
+
+        // Update security score
+        const score = status.security.score;
+        document.getElementById('securityScore').textContent = score;
+        document.getElementById('securityCircle').style.setProperty('--score', score);
+        document.getElementById('securityLevel').textContent = {
+          excellent: '🌟 优秀',
+          good: '👍 良好',
+          fair: '⚡ 一般',
+          poor: '❌ 较差'
+        }[status.security.level] || status.security.level;
+
+        // Update alerts
+        document.getElementById('alertCount').textContent = status.alerts.count;
+        document.getElementById('criticalCount').textContent = status.alerts.critical;
+        document.getElementById('warningCount').textContent = status.alerts.warning;
+
+        // Fetch agents
+        const agentsRes = await fetch('/api/agents');
+        const agents = await agentsRes.json();
+
+        // Update agents table
+        const tbody = document.getElementById('agentsTableBody');
+        if (agents.length === 0) {
+          tbody.innerHTML = '<tr><td colspan="6" style="text-align: center; color: #94a3b8;">暂无运行中的 Agent</td></tr>';
+        } else {
+          tbody.innerHTML = agents.map(agent => `
+            <tr>
+              <td class="agent-name">${agent.name}</td>
+              <td>${agent.pid}</td>
+              <td><span class="agent-status ${agent.status}">${agent.status === 'active' ? '运行中' : '已停止'}</span></td>
+              <td><strong>${agent.security.score}</strong>/100</td>
+              <td><span class="risk-level risk-${agent.security.riskLevel === 'safe' ? 'safe' : agent.security.riskLevel === 'warning' ? 'warning' : 'critical'}">${
+                agent.security.riskLevel === 'safe' ? '安全' :
+                agent.security.riskLevel === 'warning' ? '警告' : '严重'
+              }</span></td>
+              <td>${agent.security.issues.length}</td>
+            </tr>
+          `).join('');
+        }
+
+        // Update timestamp
+        document.getElementById('timestamp').textContent =
+          `最后更新: ${new Date(status.timestamp).toLocaleString('zh-CN')}`;
+
+      } catch (error) {
+        console.error('Failed to refresh data:', error);
+        alert('数据刷新失败,请检查服务器是否正常运行');
+      }
+    }
+
+    // Initial load
+    refreshData();
+
+    // Auto refresh every 10 seconds
+    refreshInterval = setInterval(refreshData, 10000);
+
+    // Cleanup on page unload
+    window.addEventListener('beforeunload', () => {
+      if (refreshInterval) clearInterval(refreshInterval);
+    });
+  </script>
+</body>
+</html>

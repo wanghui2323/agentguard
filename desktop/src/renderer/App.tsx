@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import Dashboard from './components/Dashboard';
+import DashboardV2 from './components/DashboardV2';
 import type { SecurityScanResult, TokenReport } from '../../../src/types';
 
 interface ScanData {
@@ -38,8 +38,8 @@ function App() {
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-purple-50 via-white to-indigo-50">
-      <Dashboard scanData={scanData} />
+    <div className="min-h-screen">
+      <DashboardV2 scanData={scanData} />
     </div>
   );
 }

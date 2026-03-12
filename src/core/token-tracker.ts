@@ -9,6 +9,7 @@ import type {
   CostBudget
 } from '../types';
 import { getTodayTokens, getThisWeekTokens, getThisMonthTokens, parseClaudeStats } from './claude-stats-parser';
+import { getTodayTokensFromJSONL, getThisWeekTokensFromJSONL, getThisMonthTokensFromJSONL } from './claude-jsonl-parser';
 
 export class TokenTracker {
   private budget: CostBudget = {};
@@ -75,8 +76,8 @@ export class TokenTracker {
   }
 
   /**
-   * Get Claude token statistics from REAL data in ~/.claude/stats-cache.json
-   * 或从手动配置文件读取 (VS Code 插件)
+   * Get Claude token statistics from REAL data
+   * Priority: 1) Manual config, 2) JSONL logs (most accurate), 3) stats-cache.json
    */
   private async getClaudeTokenStats(agent: Agent): Promise<{
     today: TokenUsage;
@@ -84,13 +85,75 @@ export class TokenTracker {
     thisMonth: TokenUsage;
   }> {
     try {
-      // 1. 尝试读取手动配置 (优先，因为更准确)
+      // 1. 尝试读取手动配置 (最高优先级)
       const manualStats = await this.readManualConfig();
       if (manualStats) {
         return manualStats;
       }
 
-      // 2. 降级到 stats-cache.json
+      // 2. 尝试解析 JSONL 日志 (最准确的自动方式)
+      try {
+        const todayBreakdown = await getTodayTokensFromJSONL();
+        const weekBreakdown = await getThisWeekTokensFromJSONL();
+        const monthBreakdown = await getThisMonthTokensFromJSONL();
+
+        // 如果有数据，使用 JSONL 解析结果
+        if (todayBreakdown.messageCount > 0 || monthBreakdown.messageCount > 0) {
+          console.log('[TokenTracker] Using accurate JSONL data');
+
+          const today: TokenUsage = {
+            agentId: agent.id,
+            agentName: agent.name,
+            inputTokens: todayBreakdown.inputTokens,
+            outputTokens: todayBreakdown.outputTokens,
+            cacheCreationInputTokens: todayBreakdown.cacheCreationTokens,
+            cacheReadInputTokens: todayBreakdown.cacheReadTokens,
+            totalTokens: todayBreakdown.totalTokens,
+            estimatedCost: todayBreakdown.estimatedCost,
+            period: 'daily',
+            timestamp: new Date(),
+            dataSource: 'jsonl',
+            accuracy: 'high'
+          };
+
+          const thisWeek: TokenUsage = {
+            agentId: agent.id,
+            agentName: agent.name,
+            inputTokens: weekBreakdown.inputTokens,
+            outputTokens: weekBreakdown.outputTokens,
+            cacheCreationInputTokens: weekBreakdown.cacheCreationTokens,
+            cacheReadInputTokens: weekBreakdown.cacheReadTokens,
+            totalTokens: weekBreakdown.totalTokens,
+            estimatedCost: weekBreakdown.estimatedCost,
+            period: 'weekly',
+            timestamp: new Date(),
+            dataSource: 'jsonl',
+            accuracy: 'high'
+          };
+
+          const thisMonth: TokenUsage = {
+            agentId: agent.id,
+            agentName: agent.name,
+            inputTokens: monthBreakdown.inputTokens,
+            outputTokens: monthBreakdown.outputTokens,
+            cacheCreationInputTokens: monthBreakdown.cacheCreationTokens,
+            cacheReadInputTokens: monthBreakdown.cacheReadTokens,
+            totalTokens: monthBreakdown.totalTokens,
+            estimatedCost: monthBreakdown.estimatedCost,
+            period: 'monthly',
+            timestamp: new Date(),
+            dataSource: 'jsonl',
+            accuracy: 'high'
+          };
+
+          return { today, thisWeek, thisMonth };
+        }
+      } catch (jsonlError) {
+        console.warn('[TokenTracker] JSONL parsing failed, falling back to stats-cache:', jsonlError);
+      }
+
+      // 3. 降级到 stats-cache.json (估算方式)
+      console.log('[TokenTracker] Using stats-cache.json (estimated)');
       const todayTokens = await getTodayTokens();
       const weekTokens = await getThisWeekTokens();
       const monthTokens = await getThisMonthTokens();
@@ -111,7 +174,9 @@ export class TokenTracker {
         totalTokens: todayTokens.totalTokens,
         estimatedCost: todayCost,
         period: 'daily',
-        timestamp: new Date()
+        timestamp: new Date(),
+        dataSource: 'stats-cache',
+        accuracy: 'medium'
       };
 
       const thisWeek: TokenUsage = {
@@ -122,7 +187,9 @@ export class TokenTracker {
         totalTokens: weekTokens.totalTokens,
         estimatedCost: weekCost,
         period: 'weekly',
-        timestamp: new Date()
+        timestamp: new Date(),
+        dataSource: 'stats-cache',
+        accuracy: 'medium'
       };
 
       const thisMonth: TokenUsage = {
@@ -133,7 +200,9 @@ export class TokenTracker {
         totalTokens: monthTokens.totalTokens,
         estimatedCost: monthCost,
         period: 'monthly',
-        timestamp: new Date()
+        timestamp: new Date(),
+        dataSource: 'stats-cache',
+        accuracy: 'medium'
       };
 
       return { today, thisWeek, thisMonth };
@@ -243,7 +312,9 @@ export class TokenTracker {
         totalTokens: todayTokens,
         estimatedCost: this.calculateCursorCost(todayTokens),
         period: 'daily',
-        timestamp: new Date()
+        timestamp: new Date(),
+        dataSource: 'database',
+        accuracy: 'low'
       };
 
       const thisWeek: TokenUsage = {
@@ -254,7 +325,9 @@ export class TokenTracker {
         totalTokens: weekTokens,
         estimatedCost: this.calculateCursorCost(weekTokens),
         period: 'weekly',
-        timestamp: new Date()
+        timestamp: new Date(),
+        dataSource: 'database',
+        accuracy: 'low'
       };
 
       const thisMonth: TokenUsage = {
@@ -265,7 +338,9 @@ export class TokenTracker {
         totalTokens: monthTokens,
         estimatedCost: this.calculateCursorCost(monthTokens),
         period: 'monthly',
-        timestamp: new Date()
+        timestamp: new Date(),
+        dataSource: 'database',
+        accuracy: 'low'
       };
 
       return { today, thisWeek, thisMonth };
@@ -405,7 +480,9 @@ export class TokenTracker {
       totalTokens: 0,
       estimatedCost: config.today || 0,
       period: 'daily',
-      timestamp: new Date()
+      timestamp: new Date(),
+      dataSource: 'manual',
+      accuracy: 'high'
     };
 
     const thisWeek: TokenUsage = {
@@ -416,7 +493,9 @@ export class TokenTracker {
       totalTokens: 0,
       estimatedCost: config.thisMonth || 0, // 周用月数据估算
       period: 'weekly',
-      timestamp: new Date()
+      timestamp: new Date(),
+      dataSource: 'manual',
+      accuracy: 'high'
     };
 
     const thisMonth: TokenUsage = {
@@ -427,7 +506,9 @@ export class TokenTracker {
       totalTokens: 0,
       estimatedCost: config.thisMonth || 0,
       period: 'monthly',
-      timestamp: new Date()
+      timestamp: new Date(),
+      dataSource: 'manual',
+      accuracy: 'high'
     };
 
     return { today, thisWeek, thisMonth };

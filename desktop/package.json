@@ -2,7 +2,7 @@
   "name": "agentguard-desktop",
   "version": "1.0.0",
   "description": "AgentGuard Desktop - AI Agent Security Monitoring Dashboard",
-  "main": "dist/main/desktop/src/main/index.js",
+  "main": "main.js",
   "scripts": {
     "dev": "npm run build && concurrently \"npm run watch:main\" \"npm run dev:renderer\" \"npm run start:electron\"",
     "dev:renderer": "vite",
